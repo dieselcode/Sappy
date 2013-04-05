@@ -28,17 +28,22 @@ namespace Sappy;
 class Request extends App
 {
 
+    const AUTH_BASIC        = 'Basic';
+    const AUTH_OAUTH        = 'Oauth';
+
     protected $_path        = '';
     protected $_vars        = [];
     protected $_namespaces  = [];
+    protected $_data        = null;
 
     public function __construct(array $namespaces = [])
     {
         $path = trim($_SERVER['REQUEST_URI'], '/');
         $this->_path = empty($path) ? '/' : $path;
 
-        $this->_vars = $_SERVER;
-        $this->_namespaces = $namespaces;
+        $this->_vars        = array_merge($_SERVER, getallheaders());
+        $this->_namespaces  = $namespaces;
+        $this->_data        = @file_get_contents('php://input');
     }
 
     public function __call($method, $args)
@@ -70,9 +75,53 @@ class Request extends App
                     return null;
                 }
                 break;
+
+            case 'getHeaders':
+                return $this->_vars;
+                break;
+
+            case 'getHeader':
+                return isset($this->_vars[$args[0]]) ? $this->_vars[$args[0]] : null;
+                break;
+
         }
 
         return true;
+    }
+
+    public function getContent($decodeAsArray = false)
+    {
+        $data = json_decode($this->_data, $decodeAsArray);
+        if (json_last_error() == JSON_ERROR_SYNTAX) {
+            throw new \Exception('Client data was malformed', 400);
+        }
+
+        return $data;
+    }
+
+    public function getAuthData()
+    {
+        $auth = $this->getHeader('Authorization');
+        $ret  = [];
+
+        if (!empty($auth)) {
+            list($type, $data) = explode(' ', $auth);
+
+            switch($type) {
+                case 'Basic':
+                    list($user, $password) = explode(':', base64_decode($data));
+                    $ret = ['user' => $user, 'password' => $password];
+                    break;
+
+                case 'Oauth':
+                    //
+                    // TODO: Add Oauth helper stuff
+                    //
+                    break;
+            }
+        }
+
+        return (object)$ret;
     }
 
 }

@@ -28,15 +28,18 @@ class App
 {
 
     protected $_namespaces  = [];
+    protected $_auth        = null;
     protected $_routes      = [];
     protected $_currRoute   = null;
+    private   $_methods     = ['get', 'head', 'post', 'patch', 'put', 'delete'];
+    protected $_authorized  = true;
+    protected $_requireAuth = false;
 
-    private   $_methods     = ['get', 'post', 'patch', 'put', 'delete'];
 
-
-    public function __construct(array $namespaces = [])
+    public function __construct(array $namespaces = [], $requireAuth = false)
     {
         $this->_namespaces = $namespaces;
+        $this->_requireAuth = $requireAuth;
     }
 
     public function route($route, callable $callback)
@@ -59,6 +62,16 @@ class App
         }
     }
 
+    public function auth(callable $callback)
+    {
+        $this->_auth = $callback;
+    }
+
+    public function setAuthorized($authorized)
+    {
+        $this->_authorized = !!$authorized;
+    }
+
     /**
      * Run the framework and execute all callbacks as needed
      */
@@ -66,32 +79,48 @@ class App
     {
         if (!empty($this->_routes)) {
             $request  = new Request($this->_namespaces);
-            $response = new Response();
+
+            //
+            // Check for HTTP authorization
+            //
+            $authData = $request->getAuthData();
+
+            if ($this->_requireAuth !== false && !empty($authData)) {
+                if ($this->_auth instanceof \Closure) {
+                    $callback = $this->_auth;
+                    $ret = $callback($request, $authData);
+
+                    if (!$ret) {
+                        $this->setAuthorized(false);
+                        throw new \Exception('Authorization did not succeed', 403);
+                    }
+                }
+            }
 
             foreach ($this->_routes as $route) {
 
-                //
-                // TODO: Match the requested path with the route path
-                //  Must use regexp to gather this info... dunno how yet.
-                //
-                var_dump($route->isValidNamespace($request));
-                var_dump($route->getPath());
-                var_dump($request->getPath());
+                if (!$route->isValidNamespace($request)) {
+                    throw new \Exception('Invalid namespace for requested path', 403);
+                    break;
+                }
 
-                if ($route->isValidNamespace($request) && $route->isValidPath($route->getPath(), $request->getPath())) {
+                if ($route->isValidPath($route->getPath(), $request->getPath())) {
                     $callback = $route->getMethodCallback(strtolower($request->getMethod()));
                     $params   = $route->getParams($request);
 
                     // call our callback with the request, a new Response object, and the parsed params
                     //  all callbacks return the Response object
-                    $response = $callback($request, $response, $params);
+                    if ($callback instanceof \Closure) {
+                        $response = $callback($request, new Response(), $params);
+                        $response->send();
+                    } else {
+                        throw new \Exception('Requested HTTP method not allowed for this route', 405);
+                    }
                 } else {
                     // write out a 404 error stating that the current namespace is not valid
-                    $response->write(404, ['error' => 'Namespace not allowed here']);
+                    throw new \Exception('Route not found', 404);
                 }
 
-                // output the response
-                $response->go();
             }
 
         }

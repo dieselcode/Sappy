@@ -59,7 +59,7 @@ class Route extends App
                 break;
 
             case 'getMethodCallback':
-                return $this->_methodCallbacks[$args[0]];
+                return isset($this->_methodCallbacks[$args[0]]) ? $this->_methodCallbacks[$args[0]] : null;
                 break;
 
             case 'isValidNamespace':
@@ -70,6 +70,10 @@ class Route extends App
 
                     return true;
                 }
+                break;
+
+            case 'hasParams':
+                return !!preg_match('#(:(\w+))#', $this->_path);
                 break;
 
         }

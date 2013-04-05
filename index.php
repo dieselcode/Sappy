@@ -26,15 +26,29 @@ include 'vendor/autoload.php';
 
 $api = new \Sappy\App(['v1']);
 
+//
+// This Closure is called when we encounter an Authorization header (only if we enable authorization)
+//   The below method handles BASIC auth
+//
+$api->auth(function($request, $auth) use ($api) {
+    if (!empty($auth)) {
+        if ($auth->user == 'andrew' && $auth->password == 'foo') {
+            return true;
+        }
+    }
+
+    return false;
+});
+
 $api->route('/user/:user', function() use ($api) {
     // $response is just an initialized \Sappy\Response object
     // $request contains all server generated request headers and such
-    // $params is an array of parsed params as according to the route ($params->user)
+    // $params is an object of parsed params as according to the route ($params->user)
 
     $api->get(function($request, $response, $params) use ($api) {
         $user = [
             'name'  => $params->user,  // pseudocode, yay!
-            'id'    => 1492,
+            'id'    => 1234,
             'email' => 'andrew.heebner@gmail.com'
         ];
 
@@ -47,8 +61,26 @@ $api->route('/user/:user', function() use ($api) {
         return $response;
     });
 
+    $api->post(function($request, $response, $params) use ($api) {
+        $response->write(200, $request->getContent());
+        return $response;
+    });
+
 });
 
-$api->run();
+
+//
+// Try and run the application; Catch all errors and exceptions and send them to the client
+//
+try {
+    $api->run();
+} catch(\Exception $e) {
+    //
+    // This is very generic.  You can setup your own error handler to catch the status codes
+    //
+    $response = new \Sappy\Response();
+    $json_template = ['error' => $e->getMessage()];
+    $response->write($e->getCode(), $json_template)->send();
+}
 
 ?>

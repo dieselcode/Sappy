@@ -33,19 +33,21 @@ class Response
 
     public function __construct()
     {
-
     }
 
     public function write($httpCode, $message)
     {
         $this->_httpCode = $httpCode;
         $this->_message  = $message;
+
+        return $this;
     }
 
-    public function go()
+    public function send()
     {
         http_response_code($this->_httpCode);
         header('Content-Type: application/json');
+        header('X-Powered-By: Sappy/1.0 (http://www.github.com/dieselcode/Sappy)', true);
         echo json_encode($this->_message);
         exit;
     }
