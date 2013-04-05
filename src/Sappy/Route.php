@@ -61,8 +61,6 @@ class Route extends App
             case 'isValidNamespace':
                 if ($args[0] instanceof Request) {
                     if (!empty($this->_validNamespaces)) {
-                        var_dump($args[0]->getNamespace());
-                        var_dump($this->_validNamespaces);
                         return in_array($args[0]->getNamespace(), $this->_validNamespaces) ? true : false;
                     }
 
