@@ -31,7 +31,7 @@ class Route extends App
     protected $_path            = '';
     protected $_hash            = '';
     protected $_methodCallbacks = [];
-    protected $_validNamespaces = [];
+    protected $_namespaces = [];
 
     public function __construct($route, callable $callback, array $namespaces = [])
     {
@@ -40,50 +40,37 @@ class Route extends App
 
         // do some error-checking here and make sure they're not putting in bad namespaces.
         //  Namespaces here must match what they initialized 'App' with.
-        $this->_validNamespaces = $namespaces;
+        $this->_namespaces = $namespaces;
     }
 
-    public function __call($method, $args)
+    public function getHash()
     {
-        switch ($method) {
-            case 'getHash':
-                return $this->_hash;
-                break;
+        return $this->_hash;
+    }
 
-            case 'getPath':
-                return $this->_path;
-                break;
+    public function getPath()
+    {
+        return $this->_path;
+    }
 
-            case 'getMethodCallback':
-                return isset($this->_methodCallbacks[$args[0]]) ? $this->_methodCallbacks[$args[0]] : null;
-                break;
+    public function getMethodCallback($method)
+    {
+        return isset($this->_methodCallbacks[$method]) ? $this->_methodCallbacks[$method] : null;
+    }
 
-            case 'isValidNamespace':
-                if ($args[0] instanceof Request) {
-                    if (!empty($this->_validNamespaces)) {
-                        return in_array($args[0]->getNamespace(), $this->_validNamespaces) ? true : false;
-                    } else {
-                        // no namespaces specified... you shall pass.
-                        return true;
-                    }
-                }
-                break;
-
-            case 'hasParams':
-                return !!preg_match('#(:(\w+))#', $this->_path);
-                break;
-
+    public function isValidNamespace(Request $request)
+    {
+        if (!empty($this->_namespaces)) {
+            return in_array($request->getNamespace(), $this->_namespaces) ? true : false;
+        } else {
+            // no namespaces specified... you shall pass.
+            return true;
         }
-
-        return true;
     }
 
-    public function setMethodCallback($method, \Closure $callback, $requireAuth = false)
+    public function hasParams()
     {
-        $this->_methodCallbacks[$method] = [
-            'callback' => $callback,
-            'requireAuth' => $requireAuth
-        ];
+        return !!preg_match('#(:(\w+))#', $this->_path);
     }
 
     public function getParams(Request $request)
@@ -103,6 +90,14 @@ class Route extends App
         unset($params, $request);
 
         return (object)$obj;
+    }
+
+    public function setMethodCallback($method, \Closure $callback, $requireAuth = false)
+    {
+        $this->_methodCallbacks[$method] = [
+            'callback' => $callback,
+            'requireAuth' => $requireAuth
+        ];
     }
 
     public function isValidPath($routePath, $requestPath)

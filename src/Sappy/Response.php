@@ -25,6 +25,8 @@
 namespace Sappy;
 
 
+use Sappy\Type\JSON;
+
 class Response
 {
 
@@ -33,6 +35,7 @@ class Response
 
     public function __construct()
     {
+        $this->transport = new JSON();
     }
 
     public function write($httpCode, $message)
@@ -46,9 +49,9 @@ class Response
     public function send()
     {
         http_response_code($this->_httpCode);
-        header('Content-Type: application/json');
+        header('Content-Type: application/json', true);
         header('X-Powered-By: Sappy/1.0 (http://www.github.com/dieselcode/Sappy)', true);
-        echo json_encode($this->_message);
+        echo $this->transport->encode($this->_message);
         exit;
     }
 

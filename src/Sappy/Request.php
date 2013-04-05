@@ -46,47 +46,44 @@ class Request extends App
         $this->_data        = @file_get_contents('php://input');
     }
 
-    public function __call($method, $args)
+    public function getMethod()
     {
-        switch ($method) {
-            case 'getMethod':
-                return $this->_vars['REQUEST_METHOD'];
-                break;
+        return $this->_vars['REQUEST_METHOD'];
+    }
 
-            case 'getPath':
-                if (!empty($this->_namespaces)) {
-                    $_parts = explode('/', $this->_path);
-                    if (in_array($_parts[0], $this->_namespaces)) {
-                        array_shift($_parts);
-                        return join('/', $_parts);
-                    }
-                } else {
-                    return $this->_path;
-                }
-                break;
-
-            case 'getNamespace':
-                if (!empty($this->_namespaces)) {
-                    $_parts = explode('/', $this->_path);
-                    if (in_array($_parts[0], $this->_namespaces)) {
-                        return $_parts[0];
-                    }
-
-                    return null;
-                }
-                break;
-
-            case 'getHeaders':
-                return $this->_vars;
-                break;
-
-            case 'getHeader':
-                return isset($this->_vars[$args[0]]) ? $this->_vars[$args[0]] : null;
-                break;
-
+    public function getPath()
+    {
+        if (!empty($this->_namespaces)) {
+            $_parts = explode('/', $this->_path);
+            if (in_array($_parts[0], $this->_namespaces)) {
+                array_shift($_parts);
+                return join('/', $_parts);
+            }
         }
 
-        return true;
+        return $this->_path;
+    }
+
+    public function getNamespace()
+    {
+        if (!empty($this->_namespaces)) {
+            $_parts = explode('/', $this->_path);
+            if (in_array($_parts[0], $this->_namespaces)) {
+                return $_parts[0];
+            }
+        }
+
+        return null;
+    }
+
+    public function getHeaders()
+    {
+        return $this->_vars;
+    }
+
+    public function getHeader($header)
+    {
+        return isset($this->_vars[$header]) ? $this->_vars[$header] : null;
     }
 
     public function getContent($decodeAsArray = false)
