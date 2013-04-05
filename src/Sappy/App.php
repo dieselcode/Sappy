@@ -27,28 +27,27 @@ namespace Sappy;
 class App
 {
 
-    protected $_namespaces  = [];
-    protected $_auth        = null;
-    protected $_routes      = [];
-    protected $_currRoute   = null;
-    protected $_currMethod  = null;
-    private   $_methods     = ['get', 'head', 'post', 'patch', 'put', 'delete'];
-    protected $_authorized  = true;
-    protected $_requireAuth = false;
+    protected $_validNamespaces  = [];
+    protected $_auth             = null;
+    protected $_routes           = [];
+    protected $_currRoute        = null;
+    protected $_currMethod       = null;
+    private   $_methods          = ['get', 'head', 'post', 'patch', 'put', 'delete'];
+    protected $_authorized       = true;
+    protected $_requireAuth      = false;
 
 
     public function __construct(array $namespaces = [], $requireAuth = false)
     {
-        $this->_namespaces = $namespaces;
+        $this->_validNamespaces = $namespaces;
         $this->_requireAuth = $requireAuth;
     }
 
-    public function route($route, callable $callback, $namespaces = [])
+    public function route($route, callable $callback, $validNamespaces = [])
     {
-        $_route = new Route($route, $callback, $namespaces);
-
-        $this->_routes[$_route->getHash()] = $_route;
+        $_route = new Route($route, $callback, $validNamespaces);
         $this->_currRoute = $_route;
+        $this->_routes[$_route->getHash()] = $_route;
 
         // activate the callback
         $callback();
@@ -86,7 +85,7 @@ class App
     public function launch()
     {
         if (!empty($this->_routes)) {
-            $request  = new Request($this->_namespaces);
+            $request  = new Request($this->_validNamespaces);
 
             //
             // Check for HTTP authorization
@@ -112,12 +111,13 @@ class App
 
             foreach ($this->_routes as $route) {
 
-                if (!$route->isValidNamespace($request)) {
-                    throw new \Exception('Invalid namespace for requested path', 403);
-                    break;
-                }
-
                 if ($route->isValidPath($route->getPath(), $request->getPath())) {
+
+                    if (!$route->isValidNamespace($request)) {
+                        throw new \Exception('Invalid namespace for requested path', 403);
+                        break;
+                    }
+
                     $callback = $route->getMethodCallback(strtolower($request->getMethod()));
                     $params   = $route->getParams($request);
 
@@ -128,6 +128,7 @@ class App
                         if ($authData === false) {
                             $this->setAuthorized(false);
                             throw new \Exception('Authorization did not succeed (3)', 401);
+                            break;
                         }
 
                         if ($this->_auth instanceof \Closure) {
@@ -137,9 +138,11 @@ class App
                             // if authorization succeeds, process our method callback
                             if ($ret) {
                                 $this->runMethodCallback($callback['callback'], $request, $params);
+                                break;
                             } else {
                                 $this->setAuthorized(false);
                                 throw new \Exception('Authorization did not succeed (4)', 401);
+                                break;
                             }
                         }
                     } else {

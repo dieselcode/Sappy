@@ -35,7 +35,7 @@ class Request extends App
 
     protected $_path        = '';
     protected $_vars        = [];
-    protected $_namespaces  = [];
+    protected $_validNamespaces  = [];
     protected $_data        = null;
     protected $_transport   = null;
 
@@ -45,7 +45,7 @@ class Request extends App
         $this->_path = empty($path) ? '/' : $path;
 
         $this->_vars        = array_merge($_SERVER, getallheaders());
-        $this->_namespaces  = $namespaces;
+        $this->_validNamespaces  = $namespaces;
         $this->_transport   = new JSON();
         $this->_data        = @file_get_contents('php://input');
     }
@@ -57,9 +57,9 @@ class Request extends App
 
     public function getPath()
     {
-        if (!empty($this->_namespaces)) {
+        if (!empty($this->_validNamespaces)) {
             $_parts = explode('/', $this->_path);
-            if (in_array($_parts[0], $this->_namespaces)) {
+            if (in_array($_parts[0], $this->_validNamespaces)) {
                 array_shift($_parts);
                 return join('/', $_parts);
             }
@@ -70,9 +70,9 @@ class Request extends App
 
     public function getNamespace()
     {
-        if (!empty($this->_namespaces)) {
+        if (!empty($this->_validNamespaces)) {
             $_parts = explode('/', $this->_path);
-            if (in_array($_parts[0], $this->_namespaces)) {
+            if (in_array($_parts[0], $this->_validNamespaces)) {
                 return $_parts[0];
             }
         }

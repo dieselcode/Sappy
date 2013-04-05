@@ -40,9 +40,7 @@ $api->auth(function($request, $auth) use ($api) {
     return false;
 });
 
-//
-// TODO: Allow individual routes to have auth
-//
+
 $api->route('/user/:user', function() use ($api) {
     // $response is just an initialized \Sappy\Response object
     // $request contains all server generated request headers and such
@@ -62,14 +60,15 @@ $api->route('/user/:user', function() use ($api) {
         }
 
         return $response;
-    });
+    }, true); // needs auth
 
     $api->post(function($request, $response, $params) use ($api) {
         $response->write(200, $request->getContent(true));
         return $response;
-    }, true); // <-- set to true to enable auth for this method (calls $api->auth() closure above)
+    }, true); // needs auth
 
 }, ['v1']);   // only available on the v1 namespace
+
 
 /**
  * For debugging... viewing headers
@@ -79,7 +78,8 @@ $api->route('/headers', function() use ($api) {
         $response->write(200, $request->getHeaders());
         return $response;
     });
-});
+}, ['v2']);  // only available on the v2 namespace
+
 
 //
 // Try and run the application; Catch all errors and exceptions and send them to the client

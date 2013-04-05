@@ -31,16 +31,13 @@ class Route extends App
     protected $_path            = '';
     protected $_hash            = '';
     protected $_methodCallbacks = [];
-    protected $_namespaces = [];
+    protected $_validNamespaces = [];
 
     public function __construct($route, callable $callback, array $namespaces = [])
     {
-        $this->_path = trim($route, '/');  // remove leading/trailing slashes
-        $this->_hash = $this->_generateRouteHash($route);
-
-        // do some error-checking here and make sure they're not putting in bad namespaces.
-        //  Namespaces here must match what they initialized 'App' with.
-        $this->_namespaces = $namespaces;
+        $this->_path            = trim($route, '/');  // remove leading/trailing slashes
+        $this->_hash            = $this->_generateRouteHash($route);
+        $this->_validNamespaces = $namespaces;
     }
 
     public function getHash()
@@ -60,10 +57,10 @@ class Route extends App
 
     public function isValidNamespace(Request $request)
     {
-        if (!empty($this->_namespaces)) {
-            return in_array($request->getNamespace(), $this->_namespaces) ? true : false;
+        if (count($this->_validNamespaces) > 0) {
+            return in_array($request->getNamespace(), $this->_validNamespaces) ? true : false;
         } else {
-            // no namespaces specified... you shall pass.
+            // no namespaces specified... route will be allowed on all valid namespaces
             return true;
         }
     }
@@ -102,7 +99,7 @@ class Route extends App
 
     public function isValidPath($routePath, $requestPath)
     {
-        return !!preg_match('#'.preg_replace('#(:(\w+))#', '(.*)', $routePath).'?#', $requestPath);
+        return !!preg_match('#^'.preg_replace('#(:(\w+))#', '(.*)', $routePath).'$#', $requestPath);
     }
 
     private function _generateRouteHash($route)
