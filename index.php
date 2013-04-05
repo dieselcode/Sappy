@@ -24,7 +24,7 @@
 
 include 'vendor/autoload.php';
 
-$api = new \Sappy\App(['v1']);
+$api = new \Sappy\App(['v1', 'v2']);
 
 //
 // This Closure is called when we encounter an Authorization header (only if we enable authorization)
@@ -32,6 +32,7 @@ $api = new \Sappy\App(['v1']);
 //
 $api->auth(function($request, $auth) use ($api) {
     if (!empty($auth)) {
+        var_dump($auth);
         if ($auth->user == 'andrew' && $auth->password == 'foo') {
             return true;
         }
@@ -40,6 +41,9 @@ $api->auth(function($request, $auth) use ($api) {
     return false;
 });
 
+//
+// TODO: Allow individual routes to have auth
+//
 $api->route('/user/:user', function() use ($api) {
     // $response is just an initialized \Sappy\Response object
     // $request contains all server generated request headers and such
@@ -62,25 +66,20 @@ $api->route('/user/:user', function() use ($api) {
     });
 
     $api->post(function($request, $response, $params) use ($api) {
-        $response->write(200, $request->getContent());
+        $response->write(200, $request->getContent(true));
         return $response;
-    });
+    }, true); // <-- set to true to enable auth for this method (calls $api->auth() closure above)
 
-});
-
+}, ['v1']);   // only available on the v1 namespace
 
 //
 // Try and run the application; Catch all errors and exceptions and send them to the client
+//   FYI: Thsi is very generic... you'd want better logging than this
 //
-try {
-    $api->run();
-} catch(\Exception $e) {
-    //
-    // This is very generic.  You can setup your own error handler to catch the status codes
-    //
+$api->run(function($exception) use ($api) {
     $response = new \Sappy\Response();
-    $json_template = ['error' => $e->getMessage()];
-    $response->write($e->getCode(), $json_template)->send();
-}
+    $json_template = ['error' => $exception->getMessage()];
+    $response->write($exception->getCode(), $json_template)->send();
+});
 
 ?>

@@ -119,6 +119,8 @@ class Request extends App
                     //
                     break;
             }
+        } else {
+            return false;
         }
 
         return (object)$ret;

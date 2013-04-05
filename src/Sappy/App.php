@@ -31,6 +31,7 @@ class App
     protected $_auth        = null;
     protected $_routes      = [];
     protected $_currRoute   = null;
+    protected $_currMethod  = null;
     private   $_methods     = ['get', 'head', 'post', 'patch', 'put', 'delete'];
     protected $_authorized  = true;
     protected $_requireAuth = false;
@@ -57,7 +58,9 @@ class App
     {
         if (!empty($this->_currRoute)) {
             if (in_array($method, $this->_methods)) {
-                $this->getCurrentRoute()->setMethodCallback($method, $args[0]);
+                $this->_currMethod = $method;
+                $requireAuth = isset($args[0]) ? !!$args[0] : false;
+                $this->getCurrentRoute()->setMethodCallback($method, $args[0], $requireAuth);
             }
         }
     }
@@ -72,10 +75,15 @@ class App
         $this->_authorized = !!$authorized;
     }
 
+    public function isAuthorized()
+    {
+        return $this->_authorized;
+    }
+
     /**
      * Run the framework and execute all callbacks as needed
      */
-    public function run()
+    public function launch()
     {
         if (!empty($this->_routes)) {
             $request  = new Request($this->_namespaces);
@@ -83,12 +91,17 @@ class App
             //
             // Check for HTTP authorization
             //
-            $authData = $request->getAuthData();
+            if ($this->_requireAuth !== false) {
+                $authData = $request->getAuthData();
 
-            if ($this->_requireAuth !== false && !empty($authData)) {
+                if ($authData === false) {
+                    $this->setAuthorized(false);
+                    throw new \Exception('Authorization did not succeed', 403);
+                }
+
                 if ($this->_auth instanceof \Closure) {
-                    $callback = $this->_auth;
-                    $ret = $callback($request, $authData);
+                    $authCallback = $this->_auth;
+                    $ret = $authCallback($request, $authData);
 
                     if (!$ret) {
                         $this->setAuthorized(false);
@@ -108,13 +121,30 @@ class App
                     $callback = $route->getMethodCallback(strtolower($request->getMethod()));
                     $params   = $route->getParams($request);
 
-                    // call our callback with the request, a new Response object, and the parsed params
-                    //  all callbacks return the Response object
-                    if ($callback instanceof \Closure) {
-                        $response = $callback($request, new Response(), $params);
-                        $response->send();
+                    // see if our method callback requires authorization
+                    if ($callback['requireAuth']) {
+                        $authData = $request->getAuthData();
+
+                        if ($authData === false) {
+                            $this->setAuthorized(false);
+                            throw new \Exception('Authorization did not succeed', 403);
+                        }
+
+                        if ($this->_auth instanceof \Closure) {
+                            $authCallback = $this->_auth;
+                            $ret = $authCallback($request, $authData);
+
+                            // if authorization succeeds, process our method callback
+                            if ($ret) {
+                                $this->runMethodCallback($callback['callback'], $request, $params);
+                            } else {
+                                $this->setAuthorized(false);
+                                throw new \Exception('Authorization did not succeed', 403);
+                            }
+                        }
                     } else {
-                        throw new \Exception('Requested HTTP method not allowed for this route', 405);
+                        $this->runMethodCallback($callback['callback'], $request, $params);
+                        break;
                     }
                 } else {
                     // write out a 404 error stating that the current namespace is not valid
@@ -126,9 +156,28 @@ class App
         }
     }
 
+    public function run(callable $callback)
+    {
+        try {
+            $this->launch();
+        } catch (\Exception $e) {
+            $callback($e);
+        }
+    }
+
     protected function getCurrentRoute()
     {
         return $this->_routes[$this->_currRoute->getHash()];
+    }
+
+    protected function runMethodCallback(callable $callback, Request $request, $params)
+    {
+        if ($callback instanceof \Closure) {
+            $response = $callback($request, new Response(), $params);
+            $response->send();
+        } else {
+            throw new \Exception('Requested HTTP method not allowed for this route', 405);
+        }
     }
 
 }

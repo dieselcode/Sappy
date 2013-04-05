@@ -54,10 +54,6 @@ class Route extends App
                 return $this->_path;
                 break;
 
-            case 'setMethodCallback':
-                $this->_methodCallbacks[$args[0]] = $args[1];
-                break;
-
             case 'getMethodCallback':
                 return isset($this->_methodCallbacks[$args[0]]) ? $this->_methodCallbacks[$args[0]] : null;
                 break;
@@ -79,6 +75,14 @@ class Route extends App
         }
 
         return true;
+    }
+
+    public function setMethodCallback($method, \Closure $callback, $requireAuth = false)
+    {
+        $this->_methodCallbacks[$method] = [
+            'callback' => $callback,
+            'requireAuth' => $requireAuth
+        ];
     }
 
     public function getParams(Request $request)
