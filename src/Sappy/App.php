@@ -43,7 +43,7 @@ class App
         $this->_requireAuth = $requireAuth;
     }
 
-    public function route($route, callable $callback, $namespaces = null)
+    public function route($route, callable $callback, $namespaces = [])
     {
         $_route = new Route($route, $callback, $namespaces);
 
@@ -59,7 +59,7 @@ class App
         if (!empty($this->_currRoute)) {
             if (in_array($method, $this->_methods)) {
                 $this->_currMethod = $method;
-                $requireAuth = isset($args[0]) ? !!$args[0] : false;
+                $requireAuth = isset($args[1]) ? $args[1] : false;
                 $this->getCurrentRoute()->setMethodCallback($method, $args[0], $requireAuth);
             }
         }
@@ -96,7 +96,7 @@ class App
 
                 if ($authData === false) {
                     $this->setAuthorized(false);
-                    throw new \Exception('Authorization did not succeed', 403);
+                    throw new \Exception('Authorization did not succeed (1)', 401);
                 }
 
                 if ($this->_auth instanceof \Closure) {
@@ -105,7 +105,7 @@ class App
 
                     if (!$ret) {
                         $this->setAuthorized(false);
-                        throw new \Exception('Authorization did not succeed', 403);
+                        throw new \Exception('Authorization did not succeed (2)', 401);
                     }
                 }
             }
@@ -127,7 +127,7 @@ class App
 
                         if ($authData === false) {
                             $this->setAuthorized(false);
-                            throw new \Exception('Authorization did not succeed', 403);
+                            throw new \Exception('Authorization did not succeed (3)', 401);
                         }
 
                         if ($this->_auth instanceof \Closure) {
@@ -139,7 +139,7 @@ class App
                                 $this->runMethodCallback($callback['callback'], $request, $params);
                             } else {
                                 $this->setAuthorized(false);
-                                throw new \Exception('Authorization did not succeed', 403);
+                                throw new \Exception('Authorization did not succeed (4)', 401);
                             }
                         }
                     } else {
@@ -147,8 +147,7 @@ class App
                         break;
                     }
                 } else {
-                    // write out a 404 error stating that the current namespace is not valid
-                    throw new \Exception('Route not found', 404);
+                    continue;
                 }
 
             }

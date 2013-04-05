@@ -42,9 +42,9 @@ class JSON
         return $data;
     }
 
-    public function decode($message)
+    public function decode($message, $decodeAsArray = false)
     {
-        $data = json_decode($message);
+        $data = json_decode($message, $decodeAsArray);
 
         if (($error = $this->_handleError()) !== true) {
             throw new \Exception($error, 500); // issue an internal server error

@@ -71,6 +71,16 @@ $api->route('/user/:user', function() use ($api) {
 
 }, ['v1']);   // only available on the v1 namespace
 
+/**
+ * For debugging... viewing headers
+ */
+$api->route('/headers', function() use ($api) {
+    $api->get(function($request, $response, $params) {
+        $response->write(200, $request->getHeaders());
+        return $response;
+    });
+});
+
 //
 // Try and run the application; Catch all errors and exceptions and send them to the client
 //   FYI: Thsi is very generic... you'd want better logging than this

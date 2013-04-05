@@ -25,6 +25,8 @@
 namespace Sappy;
 
 
+use Sappy\Type\JSON;
+
 class Request extends App
 {
 
@@ -35,6 +37,7 @@ class Request extends App
     protected $_vars        = [];
     protected $_namespaces  = [];
     protected $_data        = null;
+    protected $_transport   = null;
 
     public function __construct(array $namespaces = [])
     {
@@ -43,6 +46,7 @@ class Request extends App
 
         $this->_vars        = array_merge($_SERVER, getallheaders());
         $this->_namespaces  = $namespaces;
+        $this->_transport   = new JSON();
         $this->_data        = @file_get_contents('php://input');
     }
 
@@ -88,12 +92,7 @@ class Request extends App
 
     public function getContent($decodeAsArray = false)
     {
-        $data = json_decode($this->_data, $decodeAsArray);
-        if (json_last_error() == JSON_ERROR_SYNTAX) {
-            throw new \Exception('Client data was malformed', 400);
-        }
-
-        return $data;
+        return $this->_transport->decode($this->_data, $decodeAsArray);
     }
 
     public function getAuthData()

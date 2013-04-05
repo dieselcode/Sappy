@@ -30,12 +30,13 @@ use Sappy\Type\JSON;
 class Response
 {
 
-    private $_message = '';
-    private $_httpCode = 200;
+    private $_message   = '';
+    private $_httpCode  = 200;
+    private $_transport = null;
 
     public function __construct()
     {
-        $this->transport = new JSON();
+        $this->_transport = new JSON();
     }
 
     public function write($httpCode, $message)
@@ -48,10 +49,13 @@ class Response
 
     public function send()
     {
+        $data = $this->_transport->encode($this->_message);
+
         http_response_code($this->_httpCode);
         header('Content-Type: application/json', true);
+        header('Content-Length: ' . strlen($data));
         header('X-Powered-By: Sappy/1.0 (http://www.github.com/dieselcode/Sappy)', true);
-        echo $this->transport->encode($this->_message);
+        echo $data;
         exit;
     }
 
