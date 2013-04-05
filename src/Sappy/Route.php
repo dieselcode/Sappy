@@ -99,7 +99,7 @@ class Route extends App
 
     public function isValidPath($routePath, $requestPath)
     {
-        return !!preg_match('#^'.preg_replace('#(:(\w+))#', '(.*)', $routePath).'$#', $requestPath);
+        return !!preg_match('#^'.preg_replace('#(:(\w+))#', '(\w+)', $routePath).'$#', $requestPath);
     }
 
     private function _generateRouteHash($route)

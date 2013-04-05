@@ -109,50 +109,44 @@ class App
                 }
             }
 
-            foreach ($this->_routes as $route) {
+            // get a matching route
+            $route = $this->getValidRoute($request);
 
-                if ($route->isValidPath($route->getPath(), $request->getPath())) {
+            if ($route instanceof Route) {
 
-                    if (!$route->isValidNamespace($request)) {
-                        throw new \Exception('Invalid namespace for requested path', 403);
-                        break;
-                    }
-
-                    $callback = $route->getMethodCallback(strtolower($request->getMethod()));
-                    $params   = $route->getParams($request);
-
-                    // see if our method callback requires authorization
-                    if ($callback['requireAuth']) {
-                        $authData = $request->getAuthData();
-
-                        if ($authData === false) {
-                            $this->setAuthorized(false);
-                            throw new \Exception('Authorization did not succeed (3)', 401);
-                            break;
-                        }
-
-                        if ($this->_auth instanceof \Closure) {
-                            $authCallback = $this->_auth;
-                            $ret = $authCallback($request, $authData);
-
-                            // if authorization succeeds, process our method callback
-                            if ($ret) {
-                                $this->runMethodCallback($callback['callback'], $request, $params);
-                                break;
-                            } else {
-                                $this->setAuthorized(false);
-                                throw new \Exception('Authorization did not succeed (4)', 401);
-                                break;
-                            }
-                        }
-                    } else {
-                        $this->runMethodCallback($callback['callback'], $request, $params);
-                        break;
-                    }
-                } else {
-                    continue;
+                if (!$route->isValidNamespace($request)) {
+                    throw new \Exception('Invalid namespace for requested path', 403);
                 }
 
+                $callback = $route->getMethodCallback(strtolower($request->getMethod()));
+                $params   = $route->getParams($request);
+
+                // see if our method callback requires authorization
+                if ($callback['requireAuth']) {
+                    $authData = $request->getAuthData();
+
+                    if ($authData === false) {
+                        $this->setAuthorized(false);
+                        throw new \Exception('Authorization did not succeed (3)', 401);
+                    }
+
+                    if ($this->_auth instanceof \Closure) {
+                        $authCallback = $this->_auth;
+                        $ret = $authCallback($request, $authData);
+
+                        // if authorization succeeds, process our method callback
+                        if ($ret) {
+                            $this->runMethodCallback($callback['callback'], $request, $params);
+                        } else {
+                            $this->setAuthorized(false);
+                            throw new \Exception('Authorization did not succeed (4)', 401);
+                        }
+                    }
+                } else {
+                    $this->runMethodCallback($callback['callback'], $request, $params);
+                }
+            } else {
+                throw new \Exception('Requested route not found', 404);
             }
 
         }
@@ -165,6 +159,17 @@ class App
         } catch (\Exception $e) {
             $callback($e);
         }
+    }
+
+    protected function getValidRoute(Request $request)
+    {
+        foreach ($this->_routes as $route) {
+            if ($route->isValidPath($route->getPath(), $request->getPath())) {
+                return $route;
+            }
+        }
+
+        return false;
     }
 
     protected function getCurrentRoute()
