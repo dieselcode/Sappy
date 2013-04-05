@@ -43,9 +43,9 @@ class App
         $this->_requireAuth = $requireAuth;
     }
 
-    public function route($route, callable $callback)
+    public function route($route, callable $callback, $namespaces = null)
     {
-        $_route = new Route($route, $callback);
+        $_route = new Route($route, $callback, $namespaces);
 
         $this->_routes[$_route->getHash()] = $_route;
         $this->_currRoute = $_route;
