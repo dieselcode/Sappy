@@ -32,7 +32,6 @@ $api = new \Sappy\App(['v1', 'v2']);
 //
 $api->auth(function($request, $auth) use ($api) {
     if (!empty($auth)) {
-        var_dump($auth);
         if ($auth->user == 'andrew' && $auth->password == 'foo') {
             return true;
         }
