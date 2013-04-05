@@ -62,9 +62,10 @@ class Route extends App
                 if ($args[0] instanceof Request) {
                     if (!empty($this->_validNamespaces)) {
                         return in_array($args[0]->getNamespace(), $this->_validNamespaces) ? true : false;
+                    } else {
+                        // no namespaces specified... you shall pass.
+                        return true;
                     }
-
-                    return false;
                 }
                 break;
 
