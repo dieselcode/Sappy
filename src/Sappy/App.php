@@ -259,7 +259,32 @@ class App
                     throw new HTTPException('Invalid namespace for requested path', 403);
                 }
 
-                $callback = $route->getMethodCallback(strtolower($this->request->getMethod()));
+                $method   = strtolower($this->request->getMethod());
+
+
+                //
+                // If the client demanded OPTIONS, then we can send them without having to setup
+                //  a callback handler specifically for the return.  We just do it here and exit.
+                //
+                if ($method == 'options') {
+                    $header = [
+                        'Allow'          => strtoupper(join(', ', $route->getAvailableMethods())),
+                        'Content-Length' => 0
+                    ];
+
+                    $response = new Response($this->request);
+                    $response->write(200, [])->send(null, $header);
+                    exit;
+                //
+                // HEAD only needs headers sent back
+                //
+                } elseif ($method == 'head') {
+                    $response = new Response($this->request);
+                    $response->write(200, [])->send();
+                    exit;
+                }
+
+                $callback = $route->getMethodCallback($method);
                 $params   = $route->getParams($this->request);
 
                 // see if our method callback requires authorization

@@ -51,6 +51,14 @@ class Response extends App
      * @var null|object
      */
     private $_transport = null;
+    /**
+     * @var array
+     */
+    private $_noBody    = ['head', 'options'];
+    /**
+     * @var object
+     */
+    private $_request   = null;
 
     /**
      * Response constructor
@@ -59,7 +67,8 @@ class Response extends App
      */
     public function __construct(Request $request)
     {
-        $this->_transport = $request->getTransport();
+        $this->_request   = $request;
+        $this->_transport = $this->_request->getTransport();
     }
 
     /**
@@ -69,7 +78,7 @@ class Response extends App
      * @param  array   $message
      * @return object
      */
-    public function write($httpCode, array $message)
+    public function write($httpCode, array $message = [])
     {
         $this->_httpCode = $httpCode;
         $this->_message  = $message;
@@ -94,11 +103,14 @@ class Response extends App
 
         http_response_code($this->_httpCode);
         header('Connection: close', true);
-        header('Content-Type: ' . $this->_transport->getContentType(), true);
-        header('Content-Length: ' . strlen($data), true);
-        header('Content-MD5: ' . base64_encode(md5($data, true)), true);
         header('X-Powered-By: ' . $this->getSignature(), true);
         header('Vary: Accept, Authorization, Cookie', true);
+
+        if (!in_array(strtolower($this->_request->getMethod()), $this->_noBody)) {
+            header('Content-Type: ' . $this->_transport->getContentType(), true);
+            header('Content-Length: ' . strlen($data), true);
+            header('Content-MD5: ' . base64_encode(md5($data, true)), true);
+        }
 
         if (!empty($addedHeaders)) {
             foreach ($addedHeaders as $k => $v) {
@@ -110,7 +122,11 @@ class Response extends App
             $route->exportRouteHeaders();
         }
 
-        echo $data;
+        // HEAD and OPTIONS requests don't get a content body, just the headers
+        if (!in_array(strtolower($this->_request->getMethod()), $this->_noBody)) {
+            echo $data;
+        }
+
         exit;
     }
 
