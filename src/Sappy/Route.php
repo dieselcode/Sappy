@@ -116,7 +116,8 @@ class Route extends App
             $keys = array_keys($this->_methodCallbacks);
         }
 
-        return $keys;
+        // options and head are set internally because they're handled internally
+        return array_merge($keys, ['options', 'head']);
     }
 
     /**
