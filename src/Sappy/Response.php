@@ -96,7 +96,7 @@ class Response extends App
         header('Connection: close', true);
         header('Content-Type: ' . $this->_transport->getContentType(), true);
         header('Content-Length: ' . strlen($data), true);
-        header('Content-MD5: ' . base64_encode(md5($data)), true);
+        header('Content-MD5: ' . base64_encode(md5($data, true)), true);
         header('X-Powered-By: ' . $this->getSignature(), true);
         header('Vary: Accept, Authorization, Cookie', true);
 
