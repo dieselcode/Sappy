@@ -107,6 +107,7 @@ class App
      */
     public static function getVersion()
     {
+        clearstatcache();
         $vFile = dirname(dirname(dirname(__FILE__))) . '/VERSION';
 
         if (file_exists($vFile)) {
@@ -123,6 +124,7 @@ class App
      */
     public function getCurrentVersion()
     {
+        clearstatcache();
         $latest  = @file_get_contents($this->_versionLocation);
 
         if (!empty($latest)) {
