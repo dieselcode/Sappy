@@ -96,6 +96,8 @@ class App
         $this->_validNamespaces = $namespaces;
         $this->_requireAuth     = $requireAuth;
         $this->request          = new Request($this->_validNamespaces);
+
+        $this->_createDummyRoutes();
     }
 
     /**
@@ -115,28 +117,19 @@ class App
     }
 
     /**
-     * Checks installed version against remote version
+     * Gets current available version from remote server
      *
-     * @return string
+     * @return null|string
      */
-    public function checkVersion()
+    public function getCurrentVersion()
     {
         $latest  = @file_get_contents($this->_versionLocation);
-        $current = $this->getVersion();
 
-        if (!empty($latest) && !is_null($current)) {
-            switch (version_compare($current, $latest)) {
-                case -1:    // current is outdated
-                    return $latest;
-                    break;
-                case 0:     // current is current
-                case 1;     // current is a future release (greater than latest)
-                    return $current;
-                    break;
-            }
+        if (!empty($latest)) {
+            return $latest;
         }
 
-        return $current;
+        return null;
     }
 
     protected function getSignature()
@@ -250,7 +243,7 @@ class App
                     $authCallback = $this->_auth;
                     $ret = $authCallback($this->request, $authData);
 
-                    if (!$ret) {
+                    if ($ret !== true) {
                         $this->setAuthorized(false);
                         throw new HTTPException('Authorization did not succeed (2)', 401);
                     }
@@ -270,7 +263,7 @@ class App
                 $params   = $route->getParams($this->request);
 
                 // see if our method callback requires authorization
-                if ($callback['requireAuth']) {
+                if ($callback['requireAuth'] !== false) {
                     $authData = $this->request->getAuthData();
 
                     if ($authData === false) {
@@ -283,7 +276,7 @@ class App
                         $ret = $authCallback($this->request, $authData);
 
                         // if authorization succeeds, process our method callback
-                        if ($ret) {
+                        if ($ret === true) {
                             $this->runMethodCallback($route, $callback['callback'], $this->request, $params);
                         } else {
                             $this->setAuthorized(false);
@@ -375,6 +368,45 @@ class App
             $headers = ['Allow' => strtoupper(join(', ', $route->getAvailableMethods()))];
             throw new HTTPException('Requested HTTP method not allowed/implemented for this route', 405, $headers);
         }
+    }
+
+    private function _createDummyRoutes()
+    {
+        //
+        // Get version of Sappy (and check against remote version)
+        //
+        $this->route('/__version', function() {
+            $this->get(function($request, $response, $params) {
+                $remoteVer  = $this->getCurrentVersion();
+                $localVer   = $this->getVersion();
+                $message    = '';
+
+                switch (version_compare($localVer, $remoteVer)) {
+                    case -1:
+                        $message = 'outdated; update available (' . $remoteVer . ')';
+                        break;
+                    case 0:
+                        $message = 'up-to-date';
+                        break;
+                    case 1:
+                        $message = 'experimental code; revert to ' . $remoteVer . ' for stability';
+                        break;
+                }
+
+                $response->write(200, [
+                    'Sappy' => [
+                        'version' => [
+                            'local'   => $localVer,
+                            'current' => $remoteVer,
+                            'status'  => $message
+                        ]
+                    ]
+                ]);
+
+                return $response;
+            });
+        });
+
     }
 
 }

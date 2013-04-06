@@ -60,12 +60,12 @@ $api->route('/user/:user', function() use ($api) {
         }
 
         return $response;
-    }, true); // needs auth
+    });
 
     $api->post(function($request, $response, $params) use ($api) {
         $response->write(200, $request->getContent(true));
         return $response;
-    }, true); // needs auth
+    }, \Sappy\Request::AUTH_BASIC); // needs auth
 
 }, ['v1']);   // only available on the v1 namespace
 
@@ -73,14 +73,14 @@ $api->route('/user/:user', function() use ($api) {
 /**
  * For debugging... viewing headers
  *
- * Only availabel on v2 namespace, get() requires basic auth,
+ * Only available on v2 namespace, get() requires basic auth,
  * and sends custom headers.  The whole shebang
  */
 $api->route('/headers', function() use ($api) {
     $api->get(function($request, $response, $params) {
         $response->write(200, $request->getHeaders());
         return $response;
-    }, true);
+    }, \Sappy\Request::AUTH_BASIC);
 }, ['v2'])->headers([  // these are pseudo-code, but you could implement rate-limiting very easily
     'X-RateLimit-Limit' => 5000,
     'X-RateLimit-Remaining' => 4999
@@ -89,7 +89,7 @@ $api->route('/headers', function() use ($api) {
 
 //
 // Try and run the application; Catch all errors and exceptions and send them to the client
-//   FYI: Thsi is very generic... you'd want better logging than this
+//   FYI: This is very generic... you'd want better logging than this
 //
 $api->run(function(\Exception $exception, $request) use ($api) {
     $response = new \Sappy\Response($request);

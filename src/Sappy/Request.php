@@ -93,6 +93,11 @@ class Request extends App
      */
     public function getTransport()
     {
+        // if the user didn't send a content-type request, default to JSON
+        if (!isset($this->_vars['Content-Type'])) {
+            $this->_vars['Content-Type'] = 'application/json';
+        }
+
         //
         // TODO: Implement more transports
         //
@@ -207,7 +212,7 @@ class Request extends App
             switch($type) {
                 case 'Basic':
                     list($user, $password) = explode(':', base64_decode($data));
-                    $ret = ['user' => $user, 'password' => $password];
+                    $ret = ['type' => $type, 'user' => $user, 'password' => $password];
                     break;
 
                 //
@@ -215,6 +220,7 @@ class Request extends App
                 //
                 case 'Oauth':
                     $ret['token'] = $data;
+                    $ret['type']  = $type;
                     break;
             }
         } else {

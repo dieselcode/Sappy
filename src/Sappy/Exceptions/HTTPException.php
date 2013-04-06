@@ -24,19 +24,38 @@
 
 namespace Sappy\Exceptions;
 
-
+/**
+ * HTTPException class
+ *
+ * @package Sappy\Exceptions
+ */
 class HTTPException extends \Exception
 {
 
+    /**
+     * @var array
+     */
     private $_headers = [];
 
 
+    /**
+     * HTTPException constructor
+     *
+     * @param string $message
+     * @param int    $code
+     * @param array  $headers
+     */
     public function __construct($message, $code, array $headers = [])
     {
         $this->_headers = $headers;
         parent::__construct($message, $code);
     }
 
+    /**
+     * Return array of set headers
+     *
+     * @return array
+     */
     public function getHeaders()
     {
         return $this->_headers;
