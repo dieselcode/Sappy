@@ -24,25 +24,73 @@
 
 namespace Sappy;
 
+/**
+ * App class
+ *
+ * Main Sappy\App class.  Used for creating and running of API frameworks.
+ *
+ * @author      Andrew Heebner <andrew.heebner@gmail.com>
+ * @copyright   (c)2013, Andrew Heebner
+ * @license     MIT
+ * @package     Sappy
+ */
 class App
 {
 
+    /**
+     * @var array
+     */
     protected $_validNamespaces  = [];
+    /**
+     * @var null
+     */
     protected $_auth             = null;
+    /**
+     * @var array
+     */
     protected $_routes           = [];
+    /**
+     * @var null
+     */
     protected $_currRoute        = null;
+    /**
+     * @var null
+     */
     protected $_currMethod       = null;
+    /**
+     * @var array
+     */
     private   $_methods          = ['get', 'head', 'post', 'patch', 'put', 'delete'];
+    /**
+     * @var bool
+     */
     protected $_authorized       = true;
+    /**
+     * @var bool
+     */
     protected $_requireAuth      = false;
 
 
+    /**
+     * App constructor
+     *
+     * @param array $namespaces
+     * @param bool  $requireAuth
+     */
     public function __construct(array $namespaces = [], $requireAuth = false)
     {
         $this->_validNamespaces = $namespaces;
         $this->_requireAuth = $requireAuth;
     }
 
+    /**
+     * Create a new routing pattern
+     *
+     * @param           $route
+     * @param  callable $callback
+     * @param  array    $validNamespaces
+     * @return void
+     */
     public function route($route, callable $callback, $validNamespaces = [])
     {
         $_route = new Route($route, $callback, $validNamespaces);
@@ -53,6 +101,13 @@ class App
         $callback();
     }
 
+    /**
+     * Magic method.  Allows for creating method callbacks on individual routes
+     *
+     * @param  string $method
+     * @param  array  $args
+     * @return void
+     */
     public function __call($method, $args)
     {
         if (!empty($this->_currRoute)) {
@@ -64,25 +119,45 @@ class App
         }
     }
 
+    /**
+     * Define an authorization callback
+     *
+     * @param  callable $callback
+     * @return void
+     */
     public function auth(callable $callback)
     {
         $this->_auth = $callback;
     }
 
+    /**
+     * Set the authorization status
+     *
+     * @param  bool $authorized
+     * @return void
+     */
     public function setAuthorized($authorized)
     {
         $this->_authorized = !!$authorized;
     }
 
+    /**
+     * Check authorization status
+     *
+     * @return bool
+     */
     public function isAuthorized()
     {
         return $this->_authorized;
     }
 
     /**
-     * Run the framework and execute all callbacks as needed
+     * Get callback for current route, and handle accordingly
+     *
+     * @return void
+     * @throws \Exception
      */
-    public function launch()
+    private function _launch()
     {
         if (!empty($this->_routes)) {
             $request  = new Request($this->_validNamespaces);
@@ -152,17 +227,30 @@ class App
         }
     }
 
+    /**
+     * Run the current App model
+     *
+     * @param  callable $callback
+     * @return void
+     */
     public function run(callable $callback)
     {
         try {
-            $this->launch();
+            $this->_launch();
         } catch (\Exception $e) {
             $callback($e);
         }
     }
 
+    /**
+     * Get a valid route matching the incoming Request route
+     *
+     * @param  Request $request
+     * @return mixed Returns a Route object on success, false on error
+     */
     protected function getValidRoute(Request $request)
     {
+        /** @type Route $route */
         foreach ($this->_routes as $route) {
             if ($route->isValidPath($route->getPath(), $request->getPath())) {
                 return $route;
@@ -172,16 +260,35 @@ class App
         return false;
     }
 
+    /**
+     * Returns Route object that is currently in use
+     *
+     * @return object
+     */
     protected function getCurrentRoute()
     {
         return $this->_routes[$this->_currRoute->getHash()];
     }
 
+    /**
+     * Runs a callback for a specified HTTP method
+     *
+     * @param  callable $callback
+     * @param  Request  $request
+     * @param  object   $params
+     * @return void
+     * @throws \Exception
+     */
     protected function runMethodCallback(callable $callback, Request $request, $params)
     {
         if ($callback instanceof \Closure) {
             $response = $callback($request, new Response(), $params);
-            $response->send();
+
+            if ($response instanceof Response) {
+                $response->send();
+            } else {
+                throw new \Exception('Requested method could complete as requested', 500);
+            }
         } else {
             throw new \Exception('Requested HTTP method not allowed for this route', 405);
         }

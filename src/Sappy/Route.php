@@ -24,15 +24,43 @@
 
 namespace Sappy;
 
-
+/**
+ * Route class
+ *
+ * Holds specific information and methods pertaining to routing
+ *
+ * @author      Andrew Heebner <andrew.heebner@gmail.com>
+ * @copyright   (c)2013, Andrew Heebner
+ * @license     MIT
+ * @package     Sappy
+ */
 class Route extends App
 {
 
+    /**
+     * @var string
+     */
     protected $_path            = '';
+    /**
+     * @var string
+     */
     protected $_hash            = '';
+    /**
+     * @var array
+     */
     protected $_methodCallbacks = [];
+    /**
+     * @var array
+     */
     protected $_validNamespaces = [];
 
+    /**
+     * Route constructor
+     *
+     * @param array    $route
+     * @param callable $callback
+     * @param array    $namespaces
+     */
     public function __construct($route, callable $callback, array $namespaces = [])
     {
         $this->_path            = trim($route, '/');  // remove leading/trailing slashes
@@ -40,21 +68,43 @@ class Route extends App
         $this->_validNamespaces = $namespaces;
     }
 
+    /**
+     * Retrieve the current route hash
+     *
+     * @return string
+     */
     public function getHash()
     {
         return $this->_hash;
     }
 
+    /**
+     * Retrieve the current route path
+     *
+     * @return string
+     */
     public function getPath()
     {
         return $this->_path;
     }
 
+    /**
+     * Retrieve the callback options for requested method
+     *
+     * @param  string $method
+     * @return mixed Return an array if method was found, null if not
+     */
     public function getMethodCallback($method)
     {
         return isset($this->_methodCallbacks[$method]) ? $this->_methodCallbacks[$method] : null;
     }
 
+    /**
+     * Check the current namespace against the allowed namespaces for a route
+     *
+     * @param  Request $request
+     * @return bool
+     */
     public function isValidNamespace(Request $request)
     {
         if (count($this->_validNamespaces) > 0) {
@@ -65,11 +115,12 @@ class Route extends App
         }
     }
 
-    public function hasParams()
-    {
-        return !!preg_match('#(:(\w+))#', $this->_path);
-    }
-
+    /**
+     * Capture parameters from the request
+     *
+     * @param  Request $request
+     * @return object
+     */
     public function getParams(Request $request)
     {
         $obj = [];
@@ -89,6 +140,14 @@ class Route extends App
         return (object)$obj;
     }
 
+    /**
+     * Set method callback options
+     *
+     * @param  string   $method
+     * @param  callable $callback
+     * @param  bool     $requireAuth
+     * @return void
+     */
     public function setMethodCallback($method, \Closure $callback, $requireAuth = false)
     {
         $this->_methodCallbacks[$method] = [
@@ -97,11 +156,24 @@ class Route extends App
         ];
     }
 
+    /**
+     * Check to see if the requested path matches the current path
+     *
+     * @param  string $routePath
+     * @param  string $requestPath
+     * @return bool
+     */
     public function isValidPath($routePath, $requestPath)
     {
         return !!preg_match('#^'.preg_replace('#(:(\w+))#', '(\w+)', $routePath).'$#', $requestPath);
     }
 
+    /**
+     * Generate an md5 hash of a route string
+     *
+     * @param  string $route
+     * @return string
+     */
     private function _generateRouteHash($route)
     {
         return md5($route);
