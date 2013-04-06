@@ -53,6 +53,10 @@ class Route extends App
      * @var array
      */
     protected $_validNamespaces = [];
+    /**
+     * @var array
+     */
+    protected $_headers         = [];
 
     /**
      * Route constructor
@@ -97,6 +101,22 @@ class Route extends App
     public function getMethodCallback($method)
     {
         return isset($this->_methodCallbacks[$method]) ? $this->_methodCallbacks[$method] : null;
+    }
+
+    /**
+     * Get available methods for current route
+     *
+     * @return array
+     */
+    public function getAvailableMethods()
+    {
+        $keys = [];
+
+        if (!empty($this->_methodCallbacks)) {
+            $keys = array_keys($this->_methodCallbacks);
+        }
+
+        return $keys;
     }
 
     /**
@@ -154,6 +174,31 @@ class Route extends App
             'callback' => $callback,
             'requireAuth' => $requireAuth
         ];
+    }
+
+    /**
+     * Set additional route headers
+     *
+     * @param  array $headers
+     * @return void
+     */
+    public function setRouteHeaders(array $headers = [])
+    {
+        $this->_headers = $headers;
+    }
+
+    /**
+     * Used in Response, export the route headers
+     *
+     * @return void
+     */
+    public function exportRouteHeaders()
+    {
+        if (!empty($this->_headers)) {
+            foreach ($this->_headers as $k => $v) {
+                header(sprintf('%s: %s', $k, $v));
+            }
+        }
     }
 
     /**

@@ -72,23 +72,31 @@ $api->route('/user/:user', function() use ($api) {
 
 /**
  * For debugging... viewing headers
+ *
+ * Only availabel on v2 namespace, get() requires basic auth,
+ * and sends custom headers.  The whole shebang
  */
 $api->route('/headers', function() use ($api) {
     $api->get(function($request, $response, $params) {
         $response->write(200, $request->getHeaders());
         return $response;
-    });
-}, ['v2']);  // only available on the v2 namespace
+    }, true);
+}, ['v2'])->headers([  // these are pseudo-code, but you could implement rate-limiting very easily
+    'X-RateLimit-Limit' => 5000,
+    'X-RateLimit-Remaining' => 4999
+]);
 
 
 //
 // Try and run the application; Catch all errors and exceptions and send them to the client
 //   FYI: Thsi is very generic... you'd want better logging than this
 //
-$api->run(function($exception) use ($api) {
+$api->run(function(\Exception $exception) use ($api) {
     $response = new \Sappy\Response();
     $json_template = ['error' => $exception->getMessage()];
-    $response->write($exception->getCode(), $json_template)->send();
+    $response->write($exception->getCode(), $json_template);
+
+    return $response;
 });
 
 ?>

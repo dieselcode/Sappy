@@ -36,7 +36,7 @@ use Sappy\Type\JSON;
  * @license     MIT
  * @package     Sappy
  */
-class Response
+class Response extends App
 {
 
     /**
@@ -48,16 +48,18 @@ class Response
      */
     private $_httpCode  = 200;
     /**
-     * @var null|Type\JSON
+     * @var null|object
      */
     private $_transport = null;
 
     /**
      * Response constructor
+     *
+     * @params Request $request
      */
-    public function __construct()
+    public function __construct(Request $request)
     {
-        $this->_transport = new JSON();
+        $this->_transport = $request->getTransport();
     }
 
     /**
@@ -78,16 +80,36 @@ class Response
     /**
      * Send header and content buffer to client
      *
+     * @param  null|object   $route
+     * @param  array         $addedHeaders
      * @return void
      */
-    public function send()
+    public function send($route = null, array $addedHeaders = [])
     {
         $data = $this->_transport->encode($this->_message);
 
+        //
+        // TODO: Implement cache control
+        //
+
         http_response_code($this->_httpCode);
-        header('Content-Type: application/json', true);
-        header('Content-Length: ' . strlen($data));
-        header('X-Powered-By: Sappy/1.0 (http://www.github.com/dieselcode/Sappy)', true);
+        header('Connection: close', true);
+        header('Content-Type: ' . $this->_transport->getContentType(), true);
+        header('Content-Length: ' . strlen($data), true);
+        header('Content-MD5: ' . base64_encode(md5($data)), true);
+        header('X-Powered-By: ' . $this->getSignature(), true);
+        header('Vary: Accept, Authorization, Cookie', true);
+
+        if (!empty($addedHeaders)) {
+            foreach ($addedHeaders as $k => $v) {
+                header(sprintf('%s: %s', $k, $v), true);
+            }
+        }
+
+        if ($route instanceof Route) {
+            $route->exportRouteHeaders();
+        }
+
         echo $data;
         exit;
     }

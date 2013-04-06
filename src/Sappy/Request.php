@@ -77,13 +77,31 @@ class Request extends App
      */
     public function __construct(array $namespaces = [])
     {
-        $path = trim($_SERVER['REQUEST_URI'], '/');
+        $path        = trim($_SERVER['REQUEST_URI'], '/');
         $this->_path = empty($path) ? '/' : $path;
 
-        $this->_vars        = array_merge($_SERVER, getallheaders());
-        $this->_validNamespaces  = $namespaces;
-        $this->_transport   = new JSON();
-        $this->_data        = @file_get_contents('php://input');
+        $this->_vars            = array_merge($_SERVER, getallheaders());
+        $this->_validNamespaces = $namespaces;
+        $this->_transport       = $this->getTransport();
+        $this->_data            = @file_get_contents('php://input');
+    }
+
+    /**
+     * Returns transport object to be used in Response
+     *
+     * @return object
+     */
+    public function getTransport()
+    {
+        //
+        // TODO: Implement more transports
+        //
+        switch ($this->_vars['Content-Type']) {
+            default:
+            case 'application/json':
+                return new JSON();
+                break;
+        }
     }
 
     /**
@@ -112,6 +130,17 @@ class Request extends App
         }
 
         return $this->_path;
+    }
+
+    /**
+     * Return the incoming HTTP version
+     *
+     * @return float
+     */
+    public function getHTTPVersion()
+    {
+        @list(,$version) = explode('/', $this->_vars['SERVER_PROTOCOL'], 2);
+        return $version;
     }
 
     /**
@@ -181,10 +210,11 @@ class Request extends App
                     $ret = ['user' => $user, 'password' => $password];
                     break;
 
+                //
+                // TODO: See if this works properly... this just forwards the auth token forward
+                //
                 case 'Oauth':
-                    //
-                    // TODO: Add Oauth helper stuff
-                    //
+                    $ret['token'] = $data;
                     break;
             }
         } else {

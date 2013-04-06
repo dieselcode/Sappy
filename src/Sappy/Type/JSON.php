@@ -37,6 +37,11 @@ namespace Sappy\Type;
 class JSON
 {
     /**
+     * @var string
+     */
+    private $_contentType = 'application/json';
+
+    /**
      * JSON constructor
      */
     public function __construct()
@@ -112,6 +117,16 @@ class JSON
         }
 
         return ($message !== true) ? 'JSON Error: ' . $message : $message;
+    }
+
+    /**
+     * Return current content type
+     *
+     * @return string
+     */
+    public function getContentType()
+    {
+        return $this->_contentType;
     }
 
 }

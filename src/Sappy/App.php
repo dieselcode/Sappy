@@ -24,6 +24,8 @@
 
 namespace Sappy;
 
+use Sappy\Exceptions\HTTPException;
+
 /**
  * App class
  *
@@ -69,6 +71,18 @@ class App
      * @var bool
      */
     protected $_requireAuth      = false;
+    /**
+     * @var string
+     */
+    private   $_projectURL       = 'http://www.github.com/dieselcode/Sappy';
+    /**
+     * @var string
+     */
+    private   $_versionLocation  = 'https://raw.github.com/dieselcode/Sappy/master/VERSION';
+    /**
+     * @var object
+     */
+    public    $request           = null;
 
 
     /**
@@ -80,7 +94,54 @@ class App
     public function __construct(array $namespaces = [], $requireAuth = false)
     {
         $this->_validNamespaces = $namespaces;
-        $this->_requireAuth = $requireAuth;
+        $this->_requireAuth     = $requireAuth;
+        $this->request          = new Request($this->_validNamespaces);
+    }
+
+    /**
+     * Gets current version of Sappy
+     *
+     * @return null|string
+     */
+    public static function getVersion()
+    {
+        $vFile = dirname(dirname(dirname(__FILE__))) . '/VERSION';
+
+        if (file_exists($vFile)) {
+            return file_get_contents($vFile);
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks installed version against remote version
+     *
+     * @return string
+     */
+    public function checkVersion()
+    {
+        $latest  = @file_get_contents($this->_versionLocation);
+        $current = $this->getVersion();
+
+        if (!empty($latest) && !is_null($current)) {
+            switch (version_compare($current, $latest)) {
+                case -1:    // current is outdated
+                    return $latest;
+                    break;
+                case 0:     // current is current
+                case 1;     // current is a future release (greater than latest)
+                    return $current;
+                    break;
+            }
+        }
+
+        return $current;
+    }
+
+    protected function getSignature()
+    {
+        return sprintf('Sappy/%s (%s)', $this->getVersion(), $this->_projectURL);
     }
 
     /**
@@ -89,9 +150,9 @@ class App
      * @param           $route
      * @param  callable $callback
      * @param  array    $validNamespaces
-     * @return void
+     * @return object
      */
-    public function route($route, callable $callback, $validNamespaces = [])
+    public function route($route, callable $callback, array $validNamespaces = [])
     {
         $_route = new Route($route, $callback, $validNamespaces);
         $this->_currRoute = $_route;
@@ -99,6 +160,20 @@ class App
 
         // activate the callback
         $callback();
+
+        // return ourselves for chaining
+        return $this;
+    }
+
+    /**
+     * Associative list of headers to send with the route
+     *
+     * @param  array $headers
+     * @return void
+     */
+    public function headers(array $headers = [])
+    {
+        $this->getCurrentRoute()->setRouteHeaders($headers);
     }
 
     /**
@@ -155,73 +230,71 @@ class App
      * Get callback for current route, and handle accordingly
      *
      * @return void
-     * @throws \Exception
+     * @throws HTTPException
      */
     private function _launch()
     {
         if (!empty($this->_routes)) {
-            $request  = new Request($this->_validNamespaces);
-
             //
             // Check for HTTP authorization
             //
             if ($this->_requireAuth !== false) {
-                $authData = $request->getAuthData();
+                $authData = $this->request->getAuthData();
 
                 if ($authData === false) {
                     $this->setAuthorized(false);
-                    throw new \Exception('Authorization did not succeed (1)', 401);
+                    throw new HTTPException('Authorization did not succeed (1)', 401);
                 }
 
                 if ($this->_auth instanceof \Closure) {
                     $authCallback = $this->_auth;
-                    $ret = $authCallback($request, $authData);
+                    $ret = $authCallback($this->request, $authData);
 
                     if (!$ret) {
                         $this->setAuthorized(false);
-                        throw new \Exception('Authorization did not succeed (2)', 401);
+                        throw new HTTPException('Authorization did not succeed (2)', 401);
                     }
                 }
             }
 
             // get a matching route
-            $route = $this->getValidRoute($request);
+            $route = $this->getValidRoute($this->request);
 
             if ($route instanceof Route) {
 
-                if (!$route->isValidNamespace($request)) {
-                    throw new \Exception('Invalid namespace for requested path', 403);
+                if (!$route->isValidNamespace($this->request)) {
+                    throw new HTTPException('Invalid namespace for requested path', 403);
                 }
 
-                $callback = $route->getMethodCallback(strtolower($request->getMethod()));
-                $params   = $route->getParams($request);
+                $callback = $route->getMethodCallback(strtolower($this->request->getMethod()));
+                $params   = $route->getParams($this->request);
 
                 // see if our method callback requires authorization
                 if ($callback['requireAuth']) {
-                    $authData = $request->getAuthData();
+                    $authData = $this->request->getAuthData();
 
                     if ($authData === false) {
                         $this->setAuthorized(false);
-                        throw new \Exception('Authorization did not succeed (3)', 401);
+                        throw new HTTPException('Authorization did not succeed (3)', 401);
                     }
 
                     if ($this->_auth instanceof \Closure) {
                         $authCallback = $this->_auth;
-                        $ret = $authCallback($request, $authData);
+                        $ret = $authCallback($this->request, $authData);
 
                         // if authorization succeeds, process our method callback
                         if ($ret) {
-                            $this->runMethodCallback($callback['callback'], $request, $params);
+                            $this->runMethodCallback($route, $callback['callback'], $this->request, $params);
                         } else {
                             $this->setAuthorized(false);
-                            throw new \Exception('Authorization did not succeed (4)', 401);
+                            throw new HTTPException('Authorization did not succeed (4)', 401);
                         }
                     }
                 } else {
-                    $this->runMethodCallback($callback['callback'], $request, $params);
+                    $this->runMethodCallback($route, $callback['callback'], $this->request, $params);
                 }
             } else {
-                throw new \Exception('Requested route not found', 404);
+                throw new HTTPException('Requested route not found', 404);
             }
 
         }
@@ -238,7 +311,14 @@ class App
         try {
             $this->_launch();
         } catch (\Exception $e) {
-            $callback($e);
+            $response = $callback($e);
+
+            if ($response instanceof Response) {
+                $response->send(null, $e->getHeaders());
+            } else {
+                // send a 500 status code since we didn't return anything
+                $response->write(500, 'An internal error occurred.  No further information provided')->send();
+            }
         }
     }
 
@@ -273,24 +353,27 @@ class App
     /**
      * Runs a callback for a specified HTTP method
      *
+     * @param  Route    $route
      * @param  callable $callback
      * @param  Request  $request
      * @param  object   $params
      * @return void
-     * @throws \Exception
+     * @throws HTTPException
      */
-    protected function runMethodCallback(callable $callback, Request $request, $params)
+    protected function runMethodCallback(Route $route, $callback, Request $request, $params)
     {
-        if ($callback instanceof \Closure) {
-            $response = $callback($request, new Response(), $params);
+        if (!is_null($callback) && $callback instanceof \Closure) {
+            $response = $callback($request, new Response($request), $params);
 
             if ($response instanceof Response) {
-                $response->send();
+                $response->send($route);
             } else {
-                throw new \Exception('Requested method could complete as requested', 500);
+                throw new HTTPException('Requested method could complete as requested', 500);
             }
         } else {
-            throw new \Exception('Requested HTTP method not allowed for this route', 405);
+            // Set the Allow HTTP header to reflect a list of allowed methods for this route
+            $headers = ['Allow' => strtoupper(join(', ', $route->getAvailableMethods()))];
+            throw new HTTPException('Requested HTTP method not allowed/implemented for this route', 405, $headers);
         }
     }
 
