@@ -91,8 +91,8 @@ $api->route('/headers', function() use ($api) {
 // Try and run the application; Catch all errors and exceptions and send them to the client
 //   FYI: Thsi is very generic... you'd want better logging than this
 //
-$api->run(function(\Exception $exception) use ($api) {
-    $response = new \Sappy\Response();
+$api->run(function(\Exception $exception, $request) use ($api) {
+    $response = new \Sappy\Response($request);
     $json_template = ['error' => $exception->getMessage()];
     $response->write($exception->getCode(), $json_template);
 

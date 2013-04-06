@@ -311,7 +311,7 @@ class App
         try {
             $this->_launch();
         } catch (\Exception $e) {
-            $response = $callback($e);
+            $response = $callback($e, $this->request);
 
             if ($response instanceof Response) {
                 $response->send(null, $e->getHeaders());
