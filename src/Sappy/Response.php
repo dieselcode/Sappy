@@ -24,22 +24,50 @@
 
 namespace Sappy;
 
-
 use Sappy\Type\JSON;
 
+/**
+ * Response class
+ *
+ * Used for sending standard HTTP responses back to the client
+ *
+ * @author      Andrew Heebner <andrew.heebner@gmail.com>
+ * @copyright   (c)2013, Andrew Heebner
+ * @license     MIT
+ * @package     Sappy
+ */
 class Response
 {
 
+    /**
+     * @var string
+     */
     private $_message   = '';
+    /**
+     * @var int
+     */
     private $_httpCode  = 200;
+    /**
+     * @var null|Type\JSON
+     */
     private $_transport = null;
 
+    /**
+     * Response constructor
+     */
     public function __construct()
     {
         $this->_transport = new JSON();
     }
 
-    public function write($httpCode, $message)
+    /**
+     * Write status code and data to a buffer for an HTTP packet
+     *
+     * @param  integer $httpCode
+     * @param  array   $message
+     * @return object
+     */
+    public function write($httpCode, array $message)
     {
         $this->_httpCode = $httpCode;
         $this->_message  = $message;
@@ -47,6 +75,11 @@ class Response
         return $this;
     }
 
+    /**
+     * Send header and content buffer to client
+     *
+     * @return void
+     */
     public function send()
     {
         $data = $this->_transport->encode($this->_message);

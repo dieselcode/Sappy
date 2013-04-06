@@ -24,21 +24,57 @@
 
 namespace Sappy;
 
-
 use Sappy\Type\JSON;
 
+/**
+ * Request class
+ *
+ * Used for parsing incoming HTTP requests
+ *
+ * @author      Andrew Heebner <andrew.heebner@gmail.com>
+ * @copyright   (c)2013, Andrew Heebner
+ * @license     MIT
+ * @package     Sappy
+ */
 class Request extends App
 {
 
+    /**
+     * @const AUTH_BASIC Define basic authorization
+     */
     const AUTH_BASIC        = 'Basic';
+
+    /**
+     * @const AUTH_OAUTH Define Oauth authorization
+     */
     const AUTH_OAUTH        = 'Oauth';
 
+    /**
+     * @var string
+     */
     protected $_path        = '';
+    /**
+     * @var array
+     */
     protected $_vars        = [];
+    /**
+     * @var array
+     */
     protected $_validNamespaces  = [];
+    /**
+     * @var null|string
+     */
     protected $_data        = null;
+    /**
+     * @var null|Type\JSON
+     */
     protected $_transport   = null;
 
+    /**
+     * Request constructor
+     *
+     * @param array $namespaces
+     */
     public function __construct(array $namespaces = [])
     {
         $path = trim($_SERVER['REQUEST_URI'], '/');
@@ -50,11 +86,21 @@ class Request extends App
         $this->_data        = @file_get_contents('php://input');
     }
 
+    /**
+     * Return HTTP request method
+     *
+     * @return string
+     */
     public function getMethod()
     {
         return $this->_vars['REQUEST_METHOD'];
     }
 
+    /**
+     * Return currently requested path
+     *
+     * @return string
+     */
     public function getPath()
     {
         if (!empty($this->_validNamespaces)) {
@@ -68,6 +114,11 @@ class Request extends App
         return $this->_path;
     }
 
+    /**
+     * Return currently used namespace
+     *
+     * @return string|null
+     */
     public function getNamespace()
     {
         if (!empty($this->_validNamespaces)) {
@@ -80,21 +131,42 @@ class Request extends App
         return null;
     }
 
+    /**
+     * Return all PHP server variables and HTTP request variables
+     * @return array
+     */
     public function getHeaders()
     {
         return $this->_vars;
     }
 
+    /**
+     * Get a specific PHP server value or HTTP header value
+     *
+     * @param  string $header HTTP Header key to retrieve
+     * @return string|null
+     */
     public function getHeader($header)
     {
         return isset($this->_vars[$header]) ? $this->_vars[$header] : null;
     }
 
+    /**
+     * Get the incoming HTTP content
+     *
+     * @param  bool $decodeAsArray Decode the json data as an array, rather than object
+     * @return object|array
+     */
     public function getContent($decodeAsArray = false)
     {
         return $this->_transport->decode($this->_data, $decodeAsArray);
     }
 
+    /**
+     * Get current authorization header data
+     *
+     * @return bool|object
+     */
     public function getAuthData()
     {
         $auth = $this->getHeader('Authorization');

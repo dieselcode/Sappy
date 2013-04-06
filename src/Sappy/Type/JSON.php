@@ -24,13 +24,32 @@
 
 namespace Sappy\Type;
 
-
+/**
+ * JSON class
+ *
+ * Used for extending native json handling
+ *
+ * @author      Andrew Heebner <andrew.heebner@gmail.com>
+ * @copyright   (c)2013, Andrew Heebner
+ * @license     MIT
+ * @package     Sappy
+ */
 class JSON
 {
+    /**
+     * JSON constructor
+     */
     public function __construct()
     {
     }
 
+    /**
+     * Encode array as a JSON representation
+     *
+     * @param  array $message
+     * @return string
+     * @throws \Exception
+     */
     public function encode($message)
     {
         $data = json_encode($message);
@@ -42,6 +61,14 @@ class JSON
         return $data;
     }
 
+    /**
+     * Decode JSON as object/array
+     *
+     * @param  string   $message
+     * @param  bool     $decodeAsArray
+     * @return string
+     * @throws \Exception
+     */
     public function decode($message, $decodeAsArray = false)
     {
         $data = json_decode($message, $decodeAsArray);
@@ -53,6 +80,11 @@ class JSON
         return $data;
     }
 
+    /**
+     * Handle JSON errors, and pass them on
+     *
+     * @return bool|string
+     */
     private function _handleError()
     {
         switch (json_last_error()) {
