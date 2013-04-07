@@ -27,17 +27,30 @@ include 'vendor/autoload.php';
 $api = new \Sappy\App(['v1', 'v2']);
 
 //
-// This Closure is called when we encounter an Authorization header (only if we enable authorization)
-//   The below method handles BASIC auth
+// Auth events need only return true or false
 //
-$api->auth(function($request, $auth) use ($api) {
-    if (!empty($auth)) {
-        if ($auth->user == 'andrew' && $auth->password == 'foo') {
-            return true;
+// capture auth event (this is called when a method requires auth)
+//  auth events must return true or false
+$api->on('auth', function($auth, $request) use ($api) {
+    if (is_object($auth)) {
+        if ($auth->type == 'Basic') {
+            if ($auth->user == 'Andrew' && $auth->password == 'foo') {
+                return true;
+            }
         }
     }
 
     return false;
+});
+
+// capture exceptions
+//  error events must return a Response object, or false
+$api->on('error', function($exception, $request) use ($api) {
+    $response = new \Sappy\Response($request);
+    $json_template = ['error' => $exception->getMessage()];
+    $response->write($exception->getCode(), $json_template);
+
+    return $response;
 });
 
 
@@ -65,7 +78,7 @@ $api->route('/user/:user', function() use ($api) {
     $api->post(function($request, $response, $params) use ($api) {
         $response->write(200, $request->getContent(true));
         return $response;
-    }, \Sappy\Request::AUTH_BASIC); // needs auth
+    }, true); // needs auth
 
 }, ['v1']);   // only available on the v1 namespace
 
@@ -80,23 +93,14 @@ $api->route('/headers', function() use ($api) {
     $api->get(function($request, $response, $params) {
         $response->write(200, $request->getHeaders());
         return $response;
-    }, \Sappy\Request::AUTH_BASIC);
+    }, true); // needs auth
 }, ['v2'])->headers([  // these are pseudo-code, but you could implement rate-limiting very easily
     'X-RateLimit-Limit' => 5000,
     'X-RateLimit-Remaining' => 4999
 ]);
 
 
-//
-// Try and run the application; Catch all errors and exceptions and send them to the client
-//   FYI: This is very generic... you'd want better logging than this
-//
-$api->run(function(\Exception $exception, $request) use ($api) {
-    $response = new \Sappy\Response($request);
-    $json_template = ['error' => $exception->getMessage()];
-    $response->write($exception->getCode(), $json_template);
-
-    return $response;
-});
+// run the API model
+$api->run();
 
 ?>

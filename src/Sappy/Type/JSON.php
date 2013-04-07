@@ -24,6 +24,9 @@
 
 namespace Sappy\Type;
 
+use Sappy\Exceptions\HTTPException;
+use Sappy\Event;
+
 /**
  * JSON class
  *
@@ -41,9 +44,7 @@ class JSON
      */
     private $_contentType = 'application/json';
 
-    /**
-     * JSON constructor
-     */
+
     public function __construct()
     {
     }
@@ -53,14 +54,14 @@ class JSON
      *
      * @param  array $message
      * @return string
-     * @throws \Exception
+     * @throws HTTPException
      */
     public function encode($message)
     {
         $data = json_encode($message);
 
         if (($error = $this->_handleError()) !== true) {
-            throw new \Exception($error, 500); // issue an internal server error
+            Event::emit('error', [new HTTPException($error, 500), $this]);
         }
 
         return $data;
@@ -72,14 +73,14 @@ class JSON
      * @param  string   $message
      * @param  bool     $decodeAsArray
      * @return string
-     * @throws \Exception
+     * @throws HTTPException
      */
     public function decode($message, $decodeAsArray = false)
     {
         $data = json_decode($message, $decodeAsArray);
 
         if (($error = $this->_handleError()) !== true) {
-            throw new \Exception($error, 500); // issue an internal server error
+            Event::emit('error', [new HTTPException($error, 500), $this]);
         }
 
         return $data;

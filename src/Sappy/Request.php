@@ -26,137 +26,53 @@ namespace Sappy;
 
 use Sappy\Type\JSON;
 
-/**
- * Request class
- *
- * Used for parsing incoming HTTP requests
- *
- * @author      Andrew Heebner <andrew.heebner@gmail.com>
- * @copyright   (c)2013, Andrew Heebner
- * @license     MIT
- * @package     Sappy
- */
-class Request extends App
+abstract class Request
 {
 
-    /**
-     * @const AUTH_BASIC Define basic authorization
-     */
-    const AUTH_BASIC        = 'Basic';
+    protected $_validNamespaces     = [];
+    protected $_requestPath         = null;
+    protected $_requestHeaders      = [];
+    protected $_transport           = null;
+    protected $_data                = null;
 
-    /**
-     * @const AUTH_OAUTH Define Oauth authorization
-     */
-    const AUTH_OAUTH        = 'Oauth';
-
-    /**
-     * @var string
-     */
-    protected $_path        = '';
-    /**
-     * @var array
-     */
-    protected $_vars        = [];
-    /**
-     * @var array
-     */
-    protected $_validNamespaces  = [];
-    /**
-     * @var null|string
-     */
-    protected $_data        = null;
-    /**
-     * @var null|Type\JSON
-     */
-    protected $_transport   = null;
-
-    /**
-     * Request constructor
-     *
-     * @param array $namespaces
-     */
-    public function __construct(array $namespaces = [])
+    public function getRequestMethod()
     {
-        $path        = trim($_SERVER['REQUEST_URI'], '/');
-        $this->_path = empty($path) ? '/' : $path;
-
-        $this->_vars            = array_merge($_SERVER, getallheaders());
-        $this->_validNamespaces = $namespaces;
-        $this->_transport       = $this->getTransport();
-        $this->_data            = @file_get_contents('php://input');
+        return $_SERVER['REQUEST_METHOD'];
     }
 
-    /**
-     * Returns transport object to be used in Response
-     *
-     * @return object
-     */
-    public function getTransport()
+    public function getHTTPVersion()
     {
-        // if the user didn't send a content-type request, default to JSON
-        if (!isset($this->_vars['Content-Type'])) {
-            $this->_vars['Content-Type'] = 'application/json';
-        }
-
-        //
-        // TODO: Implement more transports
-        //
-        switch ($this->_vars['Content-Type']) {
-            default:
-            case 'application/json':
-                return new JSON();
-                break;
-        }
+        @list(,$version) = explode('/', $_SERVER['SERVER_PROTOCOL'], 2);
+        return $version;
     }
 
-    /**
-     * Return HTTP request method
-     *
-     * @return string
-     */
-    public function getMethod()
+    public function getHeaders()
     {
-        return $this->_vars['REQUEST_METHOD'];
+        return $this->_requestHeaders;
     }
 
-    /**
-     * Return currently requested path
-     *
-     * @return string
-     */
-    public function getPath()
+    public function getHeader($header)
+    {
+        return isset($this->_requestHeaders[$header]) ? $this->_requestHeaders[$header] : null;
+    }
+
+    public function getRequestPath()
     {
         if (!empty($this->_validNamespaces)) {
-            $_parts = explode('/', $this->_path);
+            $_parts = explode('/', $this->_requestPath);
             if (in_array($_parts[0], $this->_validNamespaces)) {
                 array_shift($_parts);
                 return join('/', $_parts);
             }
         }
 
-        return $this->_path;
+        return $this->_requestPath;
     }
 
-    /**
-     * Return the incoming HTTP version
-     *
-     * @return float
-     */
-    public function getHTTPVersion()
-    {
-        @list(,$version) = explode('/', $this->_vars['SERVER_PROTOCOL'], 2);
-        return $version;
-    }
-
-    /**
-     * Return currently used namespace
-     *
-     * @return string|null
-     */
     public function getNamespace()
     {
         if (!empty($this->_validNamespaces)) {
-            $_parts = explode('/', $this->_path);
+            $_parts = explode('/', $this->_requestPath);
             if (in_array($_parts[0], $this->_validNamespaces)) {
                 return $_parts[0];
             }
@@ -165,42 +81,27 @@ class Request extends App
         return null;
     }
 
-    /**
-     * Return all PHP server variables and HTTP request variables
-     * @return array
-     */
-    public function getHeaders()
+    public function setContent($data)
     {
-        return $this->_vars;
+        $this->_data = $data;
     }
 
-    /**
-     * Get a specific PHP server value or HTTP header value
-     *
-     * @param  string $header HTTP Header key to retrieve
-     * @return string|null
-     */
-    public function getHeader($header)
-    {
-        return isset($this->_vars[$header]) ? $this->_vars[$header] : null;
-    }
-
-    /**
-     * Get the incoming HTTP content
-     *
-     * @param  bool $decodeAsArray Decode the json data as an array, rather than object
-     * @return object|array
-     */
-    public function getContent($decodeAsArray = false)
+    //
+    // TODO: See getTransport() comments.  This needs to be changed as well
+    //
+    public function getContent($decodeAsArray)
     {
         return $this->_transport->decode($this->_data, $decodeAsArray);
     }
 
-    /**
-     * Get current authorization header data
-     *
-     * @return bool|object
-     */
+    //
+    // TODO: Use the 'Accept' and 'Content-Type' headers to determine our actual transport
+    //
+    public function getTransport()
+    {
+        return new JSON();
+    }
+
     public function getAuthData()
     {
         $auth = $this->getHeader('Authorization');
@@ -228,6 +129,12 @@ class Request extends App
         }
 
         return (object)$ret;
+    }
+
+    public function normalizePath($path)
+    {
+        $path = trim($path, '/');
+        return empty($path) ? '/' : $path;
     }
 
 }

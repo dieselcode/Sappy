@@ -24,7 +24,7 @@
 
 namespace Sappy;
 
-use Sappy\Type\JSON;
+use Sappy\Exceptions\HTTPException;
 
 /**
  * Response class
@@ -36,49 +36,37 @@ use Sappy\Type\JSON;
  * @license     MIT
  * @package     Sappy
  */
-class Response extends App
+class Response
 {
 
-    /**
-     * @var string
-     */
     private $_message   = '';
-    /**
-     * @var int
-     */
     private $_httpCode  = 200;
-    /**
-     * @var null|object
-     */
-    private $_transport = null;
-    /**
-     * @var array
-     */
     private $_noBody    = ['head', 'options'];
-    /**
-     * @var object
-     */
-    private $_request   = null;
+    private $_app       = null;
+    private $_transport = null;
 
-    /**
-     * Response constructor
-     *
-     * @params Request $request
-     */
-    public function __construct(Request $request)
+
+    public function __construct($app)
     {
-        $this->_request   = $request;
-        $this->_transport = $this->_request->getTransport();
+        if ($app instanceof App) {
+            $this->_app       = $app;
+            $this->_transport = $this->_app->transport();
+        } else {
+            Event::emit('error', [
+                new HTTPException('Invalid application passed to response object', 500),
+                $this
+            ]);
+        }
     }
 
     /**
      * Write status code and data to a buffer for an HTTP packet
      *
      * @param  integer $httpCode
-     * @param  array   $message
+     * @param  mixed   $message
      * @return object
      */
-    public function write($httpCode, array $message = [])
+    public function write($httpCode, $message)
     {
         $this->_httpCode = $httpCode;
         $this->_message  = $message;
@@ -103,10 +91,10 @@ class Response extends App
 
         http_response_code($this->_httpCode);
         header('Connection: close', true);
-        header('X-Powered-By: ' . $this->getSignature(), true);
+        header('X-Powered-By: ' . $this->_app->getSignature(), true);
         header('Vary: Accept, Authorization, Cookie', true);
 
-        if (!in_array(strtolower($this->_request->getMethod()), $this->_noBody)) {
+        if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
             header('Content-Type: ' . $this->_transport->getContentType(), true);
             header('Content-Length: ' . strlen($data), true);
             header('Content-MD5: ' . base64_encode(md5($data, true)), true);
@@ -123,7 +111,7 @@ class Response extends App
         }
 
         // HEAD and OPTIONS requests don't get a content body, just the headers
-        if (!in_array(strtolower($this->_request->getMethod()), $this->_noBody)) {
+        if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
             echo $data;
         }
 

@@ -34,28 +34,13 @@ namespace Sappy;
  * @license     MIT
  * @package     Sappy
  */
-class Route extends App
+class Route
 {
 
-    /**
-     * @var string
-     */
     protected $_path            = '';
-    /**
-     * @var string
-     */
     protected $_hash            = '';
-    /**
-     * @var array
-     */
     protected $_methodCallbacks = [];
-    /**
-     * @var array
-     */
     protected $_validNamespaces = [];
-    /**
-     * @var array
-     */
     protected $_headers         = [];
 
     /**
@@ -67,7 +52,7 @@ class Route extends App
      */
     public function __construct($route, callable $callback, array $namespaces = [])
     {
-        $this->_path            = trim($route, '/');  // remove leading/trailing slashes
+        $this->_path            = $route;
         $this->_hash            = $this->_generateRouteHash($route);
         $this->_validNamespaces = $namespaces;
     }
@@ -123,10 +108,10 @@ class Route extends App
     /**
      * Check the current namespace against the allowed namespaces for a route
      *
-     * @param  Request $request
+     * @param  object $request
      * @return bool
      */
-    public function isValidNamespace(Request $request)
+    public function isValidNamespace($request)
     {
         if (count($this->_validNamespaces) > 0) {
             return in_array($request->getNamespace(), $this->_validNamespaces) ? true : false;
@@ -139,10 +124,10 @@ class Route extends App
     /**
      * Capture parameters from the request
      *
-     * @param  Request $request
+     * @param  object $request
      * @return object
      */
-    public function getParams(Request $request)
+    public function getParams($request)
     {
         $obj = [];
 
@@ -197,7 +182,7 @@ class Route extends App
     {
         if (!empty($this->_headers)) {
             foreach ($this->_headers as $k => $v) {
-                header(sprintf('%s: %s', $k, $v));
+                header(sprintf('%s: %s', $k, $v), true);
             }
         }
     }
