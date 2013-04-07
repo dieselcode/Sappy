@@ -39,11 +39,69 @@ use Sappy\Exceptions\HTTPException;
 class Response
 {
 
-    private $_message   = '';
-    private $_httpCode  = 200;
-    private $_noBody    = ['head', 'options'];
-    private $_app       = null;
-    private $_transport = null;
+    private $_message       = '';
+    private $_httpCode      = 200;
+    private $_noBody        = ['head', 'options'];
+    private $_app           = null;
+    private $_transport     = null;
+
+    private $_validCodes    = array(
+        100 => 'Continue',
+        101 => 'Switching Protocols',
+        102 => 'Processing',
+        200 => 'OK',
+        201 => 'Created',
+        202 => 'Accepted',
+        203 => 'Non-Authoritative Information',
+        204 => 'No Content',
+        205 => 'Reset Content',
+        206 => 'Partial Content',
+        207 => 'Multi-Status',
+        300 => 'Multiple Choices',
+        301 => 'Moved Permanently',
+        302 => 'Found',
+        303 => 'See Other',
+        304 => 'Not Modified',
+        305 => 'Use Proxy',
+        306 => 'Switch Proxy',
+        307 => 'Temporary Redirect',
+        400 => 'Bad Request',
+        401 => 'Unauthorized',
+        402 => 'Payment Required',
+        403 => 'Forbidden',
+        404 => 'Not Found',
+        405 => 'Method Not Allowed',
+        406 => 'Not Acceptable',
+        407 => 'Proxy Authentication Required',
+        408 => 'Request Timeout',
+        409 => 'Conflict',
+        410 => 'Gone',
+        411 => 'Length Required',
+        412 => 'Precondition Failed',
+        413 => 'Request Entity Too Large',
+        414 => 'Request-URI Too Long',
+        415 => 'Unsupported Media Type',
+        416 => 'Requested Range Not Satisfiable',
+        417 => 'Expectation Failed',
+        418 => 'I\'m a teapot',
+        422 => 'Unprocessable Entity',
+        423 => 'Locked',
+        424 => 'Failed Dependency',
+        425 => 'Unordered Collection',
+        426 => 'Upgrade Required',
+        449 => 'Retry With',
+        450 => 'Blocked by Windows Parental Controls',
+        500 => 'Internal Server Error',
+        501 => 'Not Implemented',
+        502 => 'Bad Gateway',
+        503 => 'Service Unavailable',
+        504 => 'Gateway Timeout',
+        505 => 'HTTP Version Not Supported',
+        506 => 'Variant Also Negotiates',
+        507 => 'Insufficient Storage',
+        509 => 'Bandwidth Limit Exceeded',
+        510 => 'Not Extended'
+    );
 
 
     public function __construct($app)
@@ -68,8 +126,15 @@ class Response
      */
     public function write($httpCode, $message)
     {
-        $this->_httpCode = $httpCode;
-        $this->_message  = $message;
+        if (array_key_exists($httpCode, $this->_validCodes)) {
+            $this->_httpCode = $httpCode;
+            $this->_message  = $message;
+        } else {
+            Event::emit('error', [
+                new HTTPException('Invalid HTTP response code was supplied', 500),
+                $this
+            ]);
+        }
 
         return $this;
     }
@@ -77,11 +142,10 @@ class Response
     /**
      * Send header and content buffer to client
      *
-     * @param  null|object   $route
-     * @param  array         $addedHeaders
+     * @param  array $addedHeaders
      * @return void
      */
-    public function send($route = null, array $addedHeaders = [])
+    public function send($addedHeaders = [])
     {
         $data = $this->_transport->encode($this->_message);
 
@@ -90,9 +154,10 @@ class Response
         //
 
         http_response_code($this->_httpCode);
+        header(sprintf('Status: %d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]));
+
         header('Connection: close', true);
         header('X-Powered-By: ' . $this->_app->getSignature(), true);
-        header('Vary: Accept, Authorization, Cookie', true);
 
         if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
             header('Content-Type: ' . $this->_transport->getContentType(), true);
@@ -104,10 +169,6 @@ class Response
             foreach ($addedHeaders as $k => $v) {
                 header(sprintf('%s: %s', $k, $v), true);
             }
-        }
-
-        if ($route instanceof Route) {
-            $route->exportRouteHeaders();
         }
 
         // HEAD and OPTIONS requests don't get a content body, just the headers

@@ -101,8 +101,7 @@ class Route
             $keys = array_keys($this->_methodCallbacks);
         }
 
-        // options and head are set internally because they're handled internally
-        return array_merge($keys, ['options', 'head']);
+        return $keys;
     }
 
     /**
@@ -157,7 +156,8 @@ class Route
     public function setMethodCallback($method, \Closure $callback, $requireAuth = false)
     {
         $this->_methodCallbacks[$method] = [
-            'callback' => $callback,
+            'method'      => $method,
+            'callback'    => $callback,
             'requireAuth' => $requireAuth
         ];
     }
@@ -176,15 +176,11 @@ class Route
     /**
      * Used in Response, export the route headers
      *
-     * @return void
+     * @return array
      */
-    public function exportRouteHeaders()
+    public function getRouteHeaders()
     {
-        if (!empty($this->_headers)) {
-            foreach ($this->_headers as $k => $v) {
-                header(sprintf('%s: %s', $k, $v), true);
-            }
-        }
+        return $this->_headers;
     }
 
     /**

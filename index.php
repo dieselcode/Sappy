@@ -24,13 +24,25 @@
 
 include 'vendor/autoload.php';
 
-$api = new \Sappy\App(['v1', 'v2']);
+//
+// For content negotiation to work, the user *MUST* send a valid 'Accept' header
+//  with a preferable mime type, i.e.:  Accept: application/json
+//
+// Will result in a 400 Bad Request error being sent back to the user if nothing
+//  suitable could be found.
+//
+
+$api = new \Sappy\App(
+    ['v1', 'v2'],           // allowed namespaces
+    ['application/json']    // allowed mime types (content negotiation)
+);
 
 //
 // Auth events need only return true or false
 //
 // capture auth event (this is called when a method requires auth)
 //  auth events must return true or false
+//
 $api->on('auth', function($auth, $request) use ($api) {
     if (is_object($auth)) {
         if ($auth->type == 'Basic') {
@@ -43,8 +55,10 @@ $api->on('auth', function($auth, $request) use ($api) {
     return false;
 });
 
+//
 // capture exceptions
 //  error events must return a Response object, or false
+//
 $api->on('error', function($exception, $request) use ($api) {
     $response = new \Sappy\Response($request);
     $json_template = ['error' => $exception->getMessage()];
@@ -94,6 +108,17 @@ $api->route('/headers', function() use ($api) {
         $response->write(200, $request->getHeaders());
         return $response;
     }, true); // needs auth
+
+    $api->head(function($request, $response, $params) {
+        $response->write(200, []);
+        return $response;
+    });
+
+    $api->options(function($request, $response, $params) {
+        $response->write(200, []);
+        return $response;
+    });
+
 }, ['v2'])->headers([  // these are pseudo-code, but you could implement rate-limiting very easily
     'X-RateLimit-Limit' => 5000,
     'X-RateLimit-Remaining' => 4999

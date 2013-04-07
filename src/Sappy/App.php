@@ -42,24 +42,27 @@ class App extends Request
     protected $_routes           = [];
     protected $_currRoute        = null;
     protected $_currMethod       = null;
-    private   $_methods          = ['get', 'head', 'post', 'patch', 'put', 'delete'];
+    private   $_methods          = ['get', 'head', 'options', 'post', 'patch', 'put', 'delete'];
     protected $_authorized       = true;
 
-    private   $_projectURL       = 'http://www.github.com/dieselcode/Sappy';
+    private   $_projectURL       = 'https://github.com/dieselcode/Sappy';
     private   $_versionLocation  = 'https://raw.github.com/dieselcode/Sappy/master/VERSION';
+
 
     /**
      * App constructor
      *
      * @param array $namespaces
+     * @param array $allowedTypes
      */
-    public function __construct(array $namespaces = [])
+    public function __construct(array $namespaces = [], array $allowedTypes = [])
     {
         $this->_validNamespaces = $namespaces;
         $this->_requestPath     = $this->normalizePath($_SERVER['REQUEST_URI']);
         $this->_requestHeaders  = apache_request_headers();
         $this->_transport       = $this->getTransport();
-
+        $this->_allowedTypes    = $allowedTypes;
+        $this->_requestId       = sha1(uniqid(mt_rand(), true));
         $this->setContent(@file_get_contents('php://input'));
 
         $this->_createDummyRoutes();
@@ -185,32 +188,9 @@ class App extends Request
                     ]);
                 }
 
-                $method = strtolower($this->getRequestMethod());
-
-                //
-                // If the client demanded OPTIONS, then we can send them without having to setup
-                //  a callback handler specifically for the return.  We just do it here and exit.
-                //
-                if ($method == 'options') {
-                    $header = [
-                        'Allow'          => strtoupper(join(', ', $route->getAvailableMethods())),
-                        'Content-Length' => 0
-                    ];
-
-                    $response = new Response($this);
-                    $response->write(200, [])->send(null, $header);
-                    exit;
-                //
-                // HEAD only needs headers sent back
-                //
-                } elseif ($method == 'head') {
-                    $response = new Response($this);
-                    $response->write(200, [])->send();
-                    exit;
-                }
-
-                $callback = $route->getMethodCallback($method);
-                $params   = $route->getParams($this);
+                $method     = strtolower($this->getRequestMethod());
+                $callback   = $route->getMethodCallback($method);
+                $params     = $route->getParams($this);
 
                 // see if our method callback requires authorization
                 if ($callback['requireAuth'] !== false) {
@@ -229,7 +209,7 @@ class App extends Request
 
                         // if authorization succeeds, process our method callback
                         if ($ret === true) {
-                            $this->runMethodCallback($route, $callback['callback'], $params);
+                            $this->runMethodCallback($route, $callback, $params);
                         } else {
                             Event::emit('error', [
                                 new HTTPException('Authorization did not succeed', 401),
@@ -243,7 +223,7 @@ class App extends Request
                         ]);
                     }
                 } else {
-                    $this->runMethodCallback($route, $callback['callback'], $params);
+                    $this->runMethodCallback($route, $callback, $params);
                 }
             } else {
                 Event::emit('error', [
@@ -295,18 +275,28 @@ class App extends Request
      * Runs a callback for a specified HTTP method
      *
      * @param  Route    $route
-     * @param  callable $callback
+     * @param  array    $callback
      * @param  object   $params
      * @return void
      * @throws HTTPException
      */
     protected function runMethodCallback(Route $route, $callback, $params)
     {
-        if (!is_null($callback) && $callback instanceof \Closure) {
-            $response = $callback($this, new Response($this), $params);
+        if (!is_null($callback) && is_array($callback)) {
+            $closure = $callback['callback'];
+            $response = $closure($this, new Response($this), $params);
 
             if ($response instanceof Response) {
-                $response->send($route);
+                if ($callback['method'] == 'options') {
+                    $headers = array_merge(
+                        array('Allow' => strtoupper(join(', ', $route->getAvailableMethods()))),
+                        $route->getRouteHeaders()
+                    );
+                } else {
+                    $headers = $route->getRouteHeaders();
+                }
+
+                $response->send($headers);
             } else {
                 Event::emit('error', [
                     new HTTPException('Requested method could not complete as requested', 500),

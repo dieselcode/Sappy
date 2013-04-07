@@ -24,16 +24,25 @@
 
 namespace Sappy;
 
+use Sappy\Exceptions\HTTPException;
 use Sappy\Type\JSON;
 
 abstract class Request
 {
 
     protected $_validNamespaces     = [];
+    protected $_allowedTypes        = [];
     protected $_requestPath         = null;
     protected $_requestHeaders      = [];
     protected $_transport           = null;
     protected $_data                = null;
+    protected $_requestId           = null;
+
+
+    public function getRequestId()
+    {
+        return $this->_requestId;
+    }
 
     public function getRequestMethod()
     {
@@ -44,6 +53,79 @@ abstract class Request
     {
         @list(,$version) = explode('/', $_SERVER['SERVER_PROTOCOL'], 2);
         return $version;
+    }
+
+    public function getRemoteAddr()
+    {
+        return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
+    }
+
+    public function getRealRemoteAddr()
+    {
+        $remoteAddr = $this->getRemoteAddr();
+
+        if (isset($_SERVER['HTTP_CLIENT_IP'])) {
+            $remoteAddr = $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $remoteAddr = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        }
+
+        return $remoteAddr;
+    }
+
+    public function getAllowedTypes()
+    {
+        return $this->_allowedTypes;
+    }
+
+    public function getAccept()
+    {
+        $acceptTypes  = [];
+        $allowedTypes = $this->getAllowedTypes();
+
+        if (isset($_SERVER['HTTP_ACCEPT'])) {
+            $accept = strtolower(str_replace(' ', '', $_SERVER['HTTP_ACCEPT']));
+            $accept = explode(',', $accept);
+
+            foreach ($accept as $a) {
+                $q = 1;
+
+                if (strpos($a, ';q=')) {
+                    list($a, $q) = explode(';q=', $a);
+                }
+
+                $acceptTypes[$a] = $q;
+            }
+
+            arsort($acceptTypes);
+
+            // if we didn't define any allowed mimes, then just return
+            if (empty($allowedTypes)) {
+                return $acceptTypes;
+            }
+
+            $allowedTypes = array_map('strtolower', $allowedTypes);
+
+            // let’s check our supported types:
+            foreach ($acceptTypes as $mime => $q) {
+                if ($q && in_array($mime, $allowedTypes)) {
+                    return $mime;
+                }
+            }
+        }
+
+        // no mime-type found
+        return null;
+    }
+
+    public function getUserAgent()
+    {
+        return ($this->hasUserAgent()) ? $_SERVER['HTTP_USER_AGENT'] : null;
+    }
+
+    public function hasUserAgent()
+    {
+        return !!isset($_SERVER['HTTP_USER_AGENT']);
     }
 
     public function getHeaders()
@@ -87,7 +169,7 @@ abstract class Request
     }
 
     //
-    // TODO: See getTransport() comments.  This needs to be changed as well
+    // TODO: Refactor transports to use an interface
     //
     public function getContent($decodeAsArray)
     {
@@ -95,11 +177,35 @@ abstract class Request
     }
 
     //
-    // TODO: Use the 'Accept' and 'Content-Type' headers to determine our actual transport
+    // TODO: ensure we're getting the proper shit back
     //
     public function getTransport()
     {
-        return new JSON();
+        $accept = $this->getAccept();
+
+        // user didn't specify, try and use our default handler
+        if (is_null($accept)) {
+            if (!empty($this->_allowedTypes)) {
+                // grab the first off the list
+                $accept = $this->_allowedTypes[0];
+            } else {  // we have no defaults, throw a bad request error
+                Event::emit('error', [
+                    new HTTPException('Content negotiation failed.  No suitable transport found', 400),
+                    $this
+                ]);
+            }
+        }
+
+        // all better now... deploy the proper transport layer
+        switch ($accept) {
+            //
+            // TODO: Add more transports
+            //
+            default:
+            case 'application/json':
+                return new JSON();
+                break;
+        }
     }
 
     public function getAuthData()
