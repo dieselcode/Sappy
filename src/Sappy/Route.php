@@ -132,7 +132,7 @@ class Route
         $obj = [];
 
         $params  = explode('/', $this->_path);
-        $request = explode('/', $request->getPath());
+        $request = explode('/', $request->getRequestPath());
 
         foreach ($params as $k => $v) {
             if (substr($v, 0, 1) == ':') {
