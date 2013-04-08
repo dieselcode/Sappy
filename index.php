@@ -110,12 +110,12 @@ $api->route('/headers', function() use ($api) {
     }, true); // needs auth
 
     $api->head(function($request, $response, $params) {
-        $response->write(200, []);
+        $response->write(200);
         return $response;
     });
 
     $api->options(function($request, $response, $params) {
-        $response->write(200, []);
+        $response->write(200);
         return $response;
     });
 

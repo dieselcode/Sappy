@@ -124,11 +124,11 @@ class Response
      * @param  mixed   $message
      * @return object
      */
-    public function write($httpCode, $message)
+    public function write($httpCode, $message = [])
     {
         if (array_key_exists($httpCode, $this->_validCodes)) {
             $this->_httpCode = $httpCode;
-            $this->_message  = $message;
+            $this->_message = (!is_array($message)) ? array($message) : $message;
         } else {
             Event::emit('error', [
                 new HTTPException('Invalid HTTP response code was supplied', 500),

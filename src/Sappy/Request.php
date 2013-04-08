@@ -37,6 +37,7 @@ abstract class Request
     protected $_transport           = null;
     protected $_data                = null;
     protected $_requestId           = null;
+    protected $_useUTF8             = false;
 
 
     public function getRequestId()
@@ -118,6 +119,11 @@ abstract class Request
         return null;
     }
 
+    public function getCharset()
+    {
+        return $_SERVER['HTTP_ACCEPT_CHARSET'];
+    }
+
     public function getUserAgent()
     {
         return ($this->hasUserAgent()) ? $_SERVER['HTTP_USER_AGENT'] : null;
@@ -165,11 +171,14 @@ abstract class Request
 
     public function setContent($data)
     {
+        // TODO: See below, make sure we're decoding the data as it comes in
+        //  via the acceptable charset
         $this->_data = $data;
     }
 
     //
     // TODO: Refactor transports to use an interface
+    //   Make sure we're properly using the enabled charsets if they were activated
     //
     public function getContent($decodeAsArray)
     {
