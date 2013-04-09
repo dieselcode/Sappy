@@ -40,10 +40,12 @@ $api = new \Sappy\App(
 //
 // Auth events need only return true or false
 //
+//  __auth__ is a builtin event name (cannot be overridden)
+//
 // capture auth event (this is called when a method requires auth)
 //  auth events must return true or false
 //
-$api->on('auth', function($auth, $request) use ($api) {
+$api->on('__auth__', function($auth, $request) use ($api) {
     if (is_object($auth)) {
         if ($auth->type == 'Basic') {
             if ($auth->user == 'Andrew' && $auth->password == 'foo') {
@@ -55,74 +57,34 @@ $api->on('auth', function($auth, $request) use ($api) {
     return false;
 });
 
-//
-// capture exceptions
-//  error events must return a Response object, or false
-//
-$api->on('error', function($exception, $request) use ($api) {
-    $response = new \Sappy\Response($request);
-    $json_template = ['error' => $exception->getMessage()];
-    $response->write($exception->getCode(), $json_template);
-
-    return $response;
-});
-
-
-$api->route('/user/:user', function() use ($api) {
-    // $response is just an initialized \Sappy\Response object
-    // $request contains all server generated request headers and such
-    // $params is an object of parsed params as according to the route ($params->user)
-
-    $api->get(function($request, $response, $params) use ($api) {
-        $user = [
-            'name'  => $params->user,  // pseudocode, yay!
-            'id'    => 1234,
-            'email' => 'andrew.heebner@gmail.com'
-        ];
-
-        if ($user) {
-            $response->write(200, $user);
-        } else {
-            $response->write(404, ['error' => 'User not found']);
-        }
-
-        return $response;
-    });
-
-    $api->post(function($request, $response, $params) use ($api) {
-        $response->write(200, $request->getContent(true));
-        return $response;
-    }, true); // needs auth
-
-}, ['v1']);   // only available on the v1 namespace
-
 
 /**
  * For debugging... viewing headers
  *
- * Only available on v2 namespace, get() requires basic auth,
- * and sends custom headers.  The whole shebang
+ * available on any defined namespace
  */
 $api->route('/headers', function() use ($api) {
-    $api->get(function($request, $response, $params) {
-        $response->write(200, $request->getHeaders());
-        return $response;
-    }, true); // needs auth
 
-    $api->head(function($request, $response, $params) {
-        $response->write(200);
-        return $response;
-    });
+    $headers = [
+        'X-RateLimit-Limit' => 5000,
+        'X-RateLimit-Remaining' => 4999
+    ];
 
-    $api->options(function($request, $response, $params) {
-        $response->write(200);
+    $api->get(function($request, $response, $params) use ($api, $headers) {
+        $response->write(200, $request->getHeaders());  // send the request headers back
+        $response->headers($headers);
+
         return $response;
     });
 
-}, ['v2'])->headers([  // these are pseudo-code, but you could implement rate-limiting very easily
-    'X-RateLimit-Limit' => 5000,
-    'X-RateLimit-Remaining' => 4999
-]);
+    $api->head(function($request, $response, $params) use ($headers) {
+        $response->write(200);   // this is a head request, send no content
+        $response->headers($headers);
+
+        return $response;
+    });
+
+});
 
 
 // run the API model

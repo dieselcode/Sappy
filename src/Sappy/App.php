@@ -65,7 +65,8 @@ class App extends Request
         $this->_requestId       = sha1(uniqid(mt_rand(), true));
         $this->setContent(@file_get_contents('php://input'));
 
-        $this->_createDummyRoutes();
+        $this->_dummyRoutes();
+        $this->_handleEvents();
     }
 
     /**
@@ -133,20 +134,14 @@ class App extends Request
         return $this->_transport;
     }
 
-    /**
-     * Associative list of headers to send with the route
-     *
-     * @param  array $headers
-     * @return void
-     */
-    public function headers(array $headers = [])
-    {
-        $this->getCurrentRoute()->setRouteHeaders($headers);
-    }
-
     public function on($event, callable $callback)
     {
         Event::on($event, $callback);
+    }
+
+    public function emit($event, $args)
+    {
+        Event::emit($event, $args);
     }
 
     /**
@@ -203,9 +198,9 @@ class App extends Request
                         ]);
                     }
 
-                    if (Event::hasEvent('auth')) {
+                    if (Event::hasEvent('__auth__')) {
                         // emit the auth event and get the response
-                        $ret = Event::emit('auth', [$authData, $this]);
+                        $ret = Event::emit('__auth__', [$authData, $this]);
 
                         // if authorization succeeds, process our method callback
                         if ($ret === true) {
@@ -290,10 +285,10 @@ class App extends Request
                 if ($callback['method'] == 'options') {
                     $headers = array_merge(
                         array('Allow' => strtoupper(join(', ', $route->getAvailableMethods()))),
-                        $route->getRouteHeaders()
+                        $response->getHeaders()
                     );
                 } else {
-                    $headers = $route->getRouteHeaders();
+                    $headers = $response->getHeaders();
                 }
 
                 $response->send($headers);
@@ -313,7 +308,23 @@ class App extends Request
         }
     }
 
-    private function _createDummyRoutes()
+    private function _handleEvents()
+    {
+        //
+        // all errors are handled internally
+        //
+        $this->on('error', function(HTTPException $exception, Request $request) {
+            $response = new Response($request);
+            $response->write($exception->getCode(), ['message' => $exception->getMessage()]);
+
+            return $response;
+        });
+    }
+
+    //
+    // __version route is always accessible
+    //
+    private function _dummyRoutes()
     {
         //
         // Get version of Sappy (and check against remote version)

@@ -53,7 +53,7 @@ class Event
     }
 
     /**
-     * Emit an event with data, and return the response
+     * Emit an event with data, and either send or return the response
      *
      * @param  string     $event
      * @param  array      $args
@@ -68,7 +68,7 @@ class Event
             // normally used for error events
             if ($response instanceof Response) {
                 $headers = ($args[0] instanceof HTTPException) ? $args[0]->getHeaders() : [];
-                $response->send(null, $headers);
+                $response->send($headers);
             } else {
                 return $response;
             }

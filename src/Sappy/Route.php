@@ -41,7 +41,6 @@ class Route
     protected $_hash            = '';
     protected $_methodCallbacks = [];
     protected $_validNamespaces = [];
-    protected $_headers         = [];
 
     /**
      * Route constructor
@@ -160,27 +159,6 @@ class Route
             'callback'    => $callback,
             'requireAuth' => $requireAuth
         ];
-    }
-
-    /**
-     * Set additional route headers
-     *
-     * @param  array $headers
-     * @return void
-     */
-    public function setRouteHeaders(array $headers = [])
-    {
-        $this->_headers = $headers;
-    }
-
-    /**
-     * Used in Response, export the route headers
-     *
-     * @return array
-     */
-    public function getRouteHeaders()
-    {
-        return $this->_headers;
     }
 
     /**

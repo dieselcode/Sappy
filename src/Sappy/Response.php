@@ -40,6 +40,7 @@ class Response
 {
 
     private $_message       = '';
+    private $_headers       = [];
     private $_httpCode      = 200;
     private $_noBody        = ['head', 'options'];
     private $_app           = null;
@@ -117,6 +118,16 @@ class Response
         }
     }
 
+    public function headers($headers = [])
+    {
+        $this->_headers = $headers;
+    }
+
+    public function getHeaders()
+    {
+        return $this->_headers;
+    }
+
     /**
      * Write status code and data to a buffer for an HTTP packet
      *
@@ -148,28 +159,27 @@ class Response
     public function send($addedHeaders = [])
     {
         $data = $this->_transport->encode($this->_message);
+        $primaryHeaders = [];
 
         //
         // TODO: Implement cache control
         //
 
         http_response_code($this->_httpCode);
-        header(sprintf('Status: %d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]));
 
-        header('Connection: close', true);
-        header('X-Powered-By: ' . $this->_app->getSignature(), true);
+        $primaryHeaders['Status']       = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
+        $primaryHeaders['Connection']   = 'close';
+        $primaryHeaders['X-Powered-By'] = $this->_app->getSignature();
 
         if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
-            header('Content-Type: ' . $this->_transport->getContentType(), true);
-            header('Content-Length: ' . strlen($data), true);
-            header('Content-MD5: ' . base64_encode(md5($data, true)), true);
+            $primaryHeaders['Content-Type']     = $this->_transport->getContentType();
+            $primaryHeaders['Content-Length']   = strlen($data);
+            $primaryHeaders['Content-MD5']      = base64_encode(md5($data, true));
         }
 
-        if (!empty($addedHeaders)) {
-            foreach ($addedHeaders as $k => $v) {
-                header(sprintf('%s: %s', $k, $v), true);
-            }
-        }
+        $this->_processHeaders($primaryHeaders);
+        $this->_processHeaders($addedHeaders);
+        $this->_processHeaders($this->_headers);
 
         // HEAD and OPTIONS requests don't get a content body, just the headers
         if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
@@ -177,6 +187,15 @@ class Response
         }
 
         exit;
+    }
+
+    private function _processHeaders($headers = [])
+    {
+        if (!empty($headers)) {
+            foreach ($headers as $k => $v) {
+                header(sprintf('%s: %s', $k, $v), true);
+            }
+        }
     }
 
 }
