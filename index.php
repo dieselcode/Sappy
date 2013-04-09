@@ -45,7 +45,7 @@ $api = new \Sappy\App(
 // capture auth event (this is called when a method requires auth)
 //  auth events must return true or false
 //
-$api->on('__auth__', function($auth, $request) use ($api) {
+$api->on('__AUTH__', function($auth, $request) use ($api) {
     if (is_object($auth)) {
         if ($auth->type == 'Basic') {
             if ($auth->user == 'Andrew' && $auth->password == 'foo') {
@@ -57,6 +57,14 @@ $api->on('__auth__', function($auth, $request) use ($api) {
     return false;
 });
 
+//
+// Fake rate limit event callback
+//
+$api->on('rate.limit.headers', function($remoteAddr) {
+    // .. do something with the remoteAddr
+    return ['X-RateLimit-Limit' => 5000, 'X-RateLimit-Remaining' => 4999];
+});
+
 
 /**
  * For debugging... viewing headers
@@ -65,19 +73,17 @@ $api->on('__auth__', function($auth, $request) use ($api) {
  */
 $api->route('/headers', function() use ($api) {
 
-    $headers = [
-        'X-RateLimit-Limit' => 5000,
-        'X-RateLimit-Remaining' => 4999
-    ];
+    $api->get(function($request, $response, $params) use ($api) {
 
-    $api->get(function($request, $response, $params) use ($api, $headers) {
+        $rateHeaders = $api->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
+
         $response->write(200, $request->getHeaders());  // send the request headers back
-        $response->headers($headers);
+        $response->headers($rateHeaders);
 
         return $response;
     });
 
-    $api->head(function($request, $response, $params) use ($headers) {
+    $api->head(function($request, $response, $params) use ($api) {
         $response->write(200);   // this is a head request, send no content
         $response->headers($headers);
 

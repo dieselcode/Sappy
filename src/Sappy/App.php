@@ -141,7 +141,7 @@ class App extends Request
 
     public function emit($event, $args)
     {
-        Event::emit($event, $args);
+        return Event::emit($event, $args);
     }
 
     /**
@@ -198,9 +198,9 @@ class App extends Request
                         ]);
                     }
 
-                    if (Event::hasEvent('__auth__')) {
+                    if (Event::hasEvent('__AUTH__')) {
                         // emit the auth event and get the response
-                        $ret = Event::emit('__auth__', [$authData, $this]);
+                        $ret = Event::emit('__AUTH__', [$authData, $this]);
 
                         // if authorization succeeds, process our method callback
                         if ($ret === true) {
