@@ -74,7 +74,6 @@ $api->on('rate.limit.headers', function($remoteAddr) {
 $api->route('/headers', function() use ($api) {
 
     $api->get(function($request, $response, $params) use ($api) {
-
         $rateHeaders = $api->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
 
         $response->write(200, $request->getHeaders());  // send the request headers back
@@ -84,8 +83,10 @@ $api->route('/headers', function() use ($api) {
     });
 
     $api->head(function($request, $response, $params) use ($api) {
-        $response->write(200);   // this is a head request, send no content
-        $response->headers($headers);
+        $rateHeaders = $api->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
+
+        $response->write(200);   // this is a head request, send no content; just a status
+        $response->headers($rateHeaders);
 
         return $response;
     });
