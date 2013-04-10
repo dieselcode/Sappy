@@ -60,7 +60,7 @@ $api->on('__AUTH__', function($auth, $request) use ($api) {
 //
 // Fake rate limit event callback
 //
-$api->on('rate.limit.headers', function($remoteAddr) {
+$api->on('rate.limit.headers', function($remoteAddr) use ($api) {
     // .. do something with the remoteAddr
     return ['X-RateLimit-Limit' => 5000, 'X-RateLimit-Remaining' => 4999];
 });

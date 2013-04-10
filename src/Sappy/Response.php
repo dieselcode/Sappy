@@ -161,15 +161,22 @@ class Response
         $data = $this->_transport->encode($this->_message);
         $primaryHeaders = [];
 
-        //
-        // TODO: Implement cache control
-        //
+        // make sure we're using HTTP/1.1
+        if ($this->_app->getHTTPVersion() == 1.0) {
+            $this->_httpCode = 426;
+            $primaryHeaders['Upgrade'] = 'HTTP/1.1';
+        }
 
         http_response_code($this->_httpCode);
 
         $primaryHeaders['Status']       = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
         $primaryHeaders['Connection']   = 'close';
         $primaryHeaders['X-Powered-By'] = $this->_app->getSignature();
+
+        if ($this->_app->getHTTPVersion() == 1.0) {
+            $this->_processHeaders($primaryHeaders);
+            exit;
+        }
 
         if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
             $primaryHeaders['Content-Type']     = $this->_transport->getContentType();

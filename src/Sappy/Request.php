@@ -25,7 +25,8 @@
 namespace Sappy;
 
 use Sappy\Exceptions\HTTPException;
-use Sappy\Type\JSON;
+use Sappy\Transport\JSON;
+use Sappy\Transport\Plain;
 
 abstract class Request
 {
@@ -171,38 +172,21 @@ abstract class Request
 
     public function setContent($data)
     {
-        // TODO: See below, make sure we're decoding the data as it comes in
-        //  via the acceptable charset
         $this->_data = $data;
     }
 
-    //
-    // TODO: Refactor transports to use an interface
-    //   Make sure we're properly using the enabled charsets if they were activated
-    //
-    public function getContent($decodeAsArray)
+    public function getContent()
     {
-        return $this->_transport->decode($this->_data, $decodeAsArray);
+        return $this->_transport->decode($this->_data);
     }
 
-    //
-    // TODO: ensure we're getting the proper shit back
-    //
     public function getTransport()
     {
         $accept = $this->getAccept();
 
         // user didn't specify, try and use our default handler
         if (is_null($accept)) {
-            if (!empty($this->_allowedTypes)) {
-                // grab the first off the list
-                $accept = $this->_allowedTypes[0];
-            } else {  // we have no defaults, throw a bad request error
-                Event::emit('error', [
-                    new HTTPException('Content negotiation failed.  No suitable transport found', 400),
-                    $this
-                ]);
-            }
+            $accept = !empty($this->_allowedTypes) ? $this->_allowedTypes[0] : 'application/json';
         }
 
         // all better now... deploy the proper transport layer
@@ -213,6 +197,9 @@ abstract class Request
             default:
             case 'application/json':
                 return new JSON();
+                break;
+            case 'text/plain':
+                return new Plain();
                 break;
         }
     }

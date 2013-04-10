@@ -22,7 +22,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace Sappy\Type;
+namespace Sappy\Transport;
 
 use Sappy\Exceptions\HTTPException;
 use Sappy\Event;
@@ -71,13 +71,12 @@ class JSON
      * Decode JSON as object/array
      *
      * @param  string   $message
-     * @param  bool     $decodeAsArray
      * @return string
      * @throws HTTPException
      */
-    public function decode($message, $decodeAsArray = false)
+    public function decode($message)
     {
-        $data = json_decode($message, $decodeAsArray);
+        $data = json_decode($message);
 
         if (($error = $this->_handleError()) !== true) {
             Event::emit('error', [new HTTPException($error, 500), $this]);
