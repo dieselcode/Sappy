@@ -70,7 +70,11 @@ class App extends Request
         $this->_handleEvents();
 
         // set the content after everything is all setup
-        $this->setContent(@file_get_contents('php://input'));
+        try {
+            $this->setContent(@file_get_contents('php://input'));
+        } catch (HTTPException $e) {
+            Event::emit('error', [$e, $this]);
+        }
     }
 
     /**

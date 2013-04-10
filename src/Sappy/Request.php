@@ -24,7 +24,6 @@
 
 namespace Sappy;
 
-use Sappy\Exceptions\HTTPException;
 use Sappy\Transport\JSON;
 
 abstract class Request
@@ -147,12 +146,12 @@ abstract class Request
         return !!isset($_SERVER['HTTP_USER_AGENT']);
     }
 
-    public function getHeaders()
+    public static function getHeaders()
     {
         return static::$_requestHeaders;
     }
 
-    public function getHeader($header)
+    public static function getHeader($header)
     {
         return isset(static::$_requestHeaders[$header]) ? static::$_requestHeaders[$header] : null;
     }
@@ -182,16 +181,12 @@ abstract class Request
         return null;
     }
 
-    public function setContent($data)
+    public static function setContent($data)
     {
-        try {
-            static::$_data = JSON::decode($data);
-        } catch (HTTPException $e) {
-            Event::emit('error', [$e, $this]);
-        }
+        static::$_data = JSON::decode($data);
     }
 
-    public function getContent()
+    public static function getContent()
     {
         return static::$_data;
     }
