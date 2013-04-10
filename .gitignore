@@ -1,4 +1,4 @@
 .idea/
 /vendor/
-/copy.bat
-/index.php
+copy.bat
+index.php

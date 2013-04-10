@@ -1,2 +1,1 @@
-xcopy K:\Sappy C:\xampp\htdocs /E
-pause
+xcopy K:\Sappy C:\xampp\htdocs /E /Y
