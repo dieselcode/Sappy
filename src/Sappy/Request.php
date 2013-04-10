@@ -32,7 +32,7 @@ abstract class Request
 {
 
     protected $_validNamespaces     = [];
-    protected $_allowedTypes        = [];
+    protected $_allowedTypes        = ['application/json'];
     protected $_requestPath         = null;
     protected $_requestHeaders      = [];
     protected $_data                = null;
@@ -216,6 +216,11 @@ abstract class Request
     {
         $path = trim($path, '/');
         return empty($path) ? '/' : $path;
+    }
+
+    protected function _setRequestHeaders()
+    {
+        $this->_requestHeaders = getallheaders();
     }
 
 }

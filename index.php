@@ -33,8 +33,7 @@ include 'vendor/autoload.php';
 //
 
 $api = new \Sappy\App(
-    ['v1', 'v2'],           // allowed namespaces
-    ['application/json']    // allowed mime types (content negotiation)
+    ['v1', 'v2']           // allowed namespaces
 );
 
 //

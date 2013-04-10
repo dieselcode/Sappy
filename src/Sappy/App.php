@@ -25,7 +25,6 @@
 namespace Sappy;
 
 use Sappy\Exceptions\HTTPException;
-use Sappy\Transport\JSON;
 
 /**
  * App class
@@ -60,9 +59,10 @@ class App extends Request
      */
     public function __construct(array $namespaces = [], array $allowedTypes = [])
     {
+        $this->_setRequestHeaders();
+
         $this->_validNamespaces = $namespaces;
         $this->_requestPath     = $this->normalizePath($_SERVER['REQUEST_URI']);
-        $this->_requestHeaders  = apache_request_headers();
         $this->_allowedTypes    = $allowedTypes;
         $this->_requestId       = sha1(uniqid(mt_rand(), true));
 
