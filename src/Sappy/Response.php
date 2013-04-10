@@ -106,16 +106,8 @@ class Response
     );
 
 
-    public function __construct($app)
+    public function __construct()
     {
-        if ($app instanceof App) {
-            $this->_app       = $app;
-        } else {
-            Event::emit('error', [
-                new HTTPException('Invalid application passed to response object', 500),
-                $this
-            ]);
-        }
     }
 
     public function headers($headers = [])
@@ -167,7 +159,7 @@ class Response
         $primaryHeaders = [];
 
         // make sure we're using HTTP/1.1
-        if ($this->_app->getHTTPVersion() == 1.0) {
+        if (App::getHTTPVersion() == 1.0) {
             $this->_httpCode = 426;
             $primaryHeaders['Upgrade'] = 'HTTP/1.1';
         }
@@ -176,14 +168,14 @@ class Response
 
         $primaryHeaders['Status']       = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
         $primaryHeaders['Connection']   = 'close';
-        $primaryHeaders['X-Powered-By'] = $this->_app->getSignature();
+        $primaryHeaders['X-Powered-By'] = App::getSignature();
 
-        if ($this->_app->getHTTPVersion() == 1.0) {
+        if (App::getHTTPVersion() == 1.0) {
             $this->_processHeaders($primaryHeaders);
             exit;
         }
 
-        if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
+        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
             $primaryHeaders['Content-Type']     = JSON::getContentType();
             $primaryHeaders['Content-Length']   = strlen($data);
             $primaryHeaders['Content-MD5']      = base64_encode(md5($data, true));
@@ -194,7 +186,7 @@ class Response
         $this->_processHeaders($this->_headers);
 
         // HEAD and OPTIONS requests don't get a content body, just the headers
-        if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
+        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
             echo $data;
         }
 

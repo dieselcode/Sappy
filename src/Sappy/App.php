@@ -47,8 +47,8 @@ class App extends Request
 
     protected $_content          = null;
 
-    private   $_projectURL       = 'https://github.com/dieselcode/Sappy';
-    private   $_versionLocation  = 'https://raw.github.com/dieselcode/Sappy/master/VERSION';
+    static    $_projectURL       = 'https://github.com/dieselcode/Sappy';
+    static    $_versionLocation  = 'https://raw.github.com/dieselcode/Sappy/master/VERSION';
 
 
     /**
@@ -61,10 +61,10 @@ class App extends Request
     {
         $this->_setRequestHeaders();
 
-        $this->_validNamespaces = $namespaces;
-        $this->_requestPath     = $this->normalizePath($_SERVER['REQUEST_URI']);
-        $this->_allowedTypes    = $allowedTypes;
-        $this->_requestId       = sha1(uniqid(mt_rand(), true));
+        static::$_validNamespaces = $namespaces;
+        static::$_requestPath     = $this->normalizePath($_SERVER['REQUEST_URI']);
+        static::$_allowedTypes    = $allowedTypes;
+        static::$_requestId       = sha1(uniqid(mt_rand(), true));
 
         $this->_dummyRoutes();
         $this->_handleEvents();
@@ -95,10 +95,10 @@ class App extends Request
      *
      * @return null|string
      */
-    public function getCurrentVersion()
+    public static function getCurrentVersion()
     {
         clearstatcache();
-        $latest  = @file_get_contents($this->_versionLocation);
+        $latest = @file_get_contents(static::$_versionLocation);
 
         if (!empty($latest)) {
             return $latest;
@@ -107,9 +107,9 @@ class App extends Request
         return null;
     }
 
-    public function getSignature()
+    public static function getSignature()
     {
-        return sprintf('Sappy/%s (%s)', $this->getVersion(), $this->_projectURL);
+        return sprintf('Sappy/%s (%s)', self::getVersion(), static::$_projectURL);
     }
 
     /**
@@ -123,6 +123,7 @@ class App extends Request
     public function route($route, callable $callback, array $validNamespaces = [])
     {
         $_route = new Route($this->normalizePath($route), $callback, $validNamespaces);
+
         $this->_currRoute = $_route;
         $this->_routes[$_route->getHash()] = $_route;
 
@@ -278,9 +279,12 @@ class App extends Request
     {
         if (!is_null($callback) && is_array($callback)) {
             $closure = $callback['callback'];
-            $response = $closure($this, new Response($this), $params);
+            $response = $closure($this, new Response(), $params);
 
             if ($response instanceof Response) {
+                //
+                // As per HTTP spec, Options needs a list of methods set to the Allow header
+                //
                 if ($callback['method'] == 'options') {
                     $headers = array_merge(
                         array('Allow' => strtoupper(join(', ', $route->getAvailableMethods()))),
@@ -313,7 +317,7 @@ class App extends Request
         // all errors are handled internally
         //
         $this->on('error', function(HTTPException $exception, Request $request) {
-            $response = new Response($request);
+            $response = new Response();
             $response->write($exception->getCode(), ['message' => $exception->getMessage()]);
 
             return $response;

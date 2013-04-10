@@ -26,49 +26,56 @@ namespace Sappy;
 
 use Sappy\Exceptions\HTTPException;
 use Sappy\Transport\JSON;
-use Sappy\Transport\Plain;
 
 abstract class Request
 {
 
-    protected $_validNamespaces     = [];
-    protected $_allowedTypes        = ['application/json'];
-    protected $_requestPath         = null;
-    protected $_requestHeaders      = [];
-    protected $_data                = null;
-    protected $_requestId           = null;
-    protected $_useUTF8             = false;
+    protected static $_validNamespaces     = [];
+    protected static $_allowedTypes        = ['application/json'];
+    protected static $_requestPath         = null;
+    protected static $_requestHeaders      = [];
+    protected static $_data                = null;
+    protected static $_requestId           = null;
 
 
     public function getRequestId()
     {
-        return $this->_requestId;
+        return static::$_requestId;
     }
 
-    public function getRequestMethod()
+    public static function getRequestMethod()
     {
         return $_SERVER['REQUEST_METHOD'];
     }
 
-    public function isSecure()
+    public static function isSecure()
     {
         return !!(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off');
     }
 
-    public function getHTTPVersion()
+    public static function isAjax()
+    {
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+            return !!(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
+        }
+
+        return false;
+    }
+
+    public static function getHTTPVersion()
     {
         @list(,$version) = explode('/', $_SERVER['SERVER_PROTOCOL'], 2);
         return $version;
     }
 
-    public function getRemoteAddr()
+    public static function getRemoteAddr()
     {
         return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
     }
 
-    public function getRealRemoteAddr()
+    public static function getRealRemoteAddr()
     {
-        $remoteAddr = $this->getRemoteAddr();
+        $remoteAddr = self::getRemoteAddr();
 
         if (isset($_SERVER['HTTP_CLIENT_IP'])) {
             $remoteAddr = $_SERVER['HTTP_CLIENT_IP'];
@@ -79,10 +86,13 @@ abstract class Request
         return $remoteAddr;
     }
 
+    //
+    // TODO: Change this to just parse the Accept header (and convert to static)
+    //
     public function getAccept()
     {
         $acceptTypes  = [];
-        $allowedTypes = $this->_allowedTypes;
+        $allowedTypes = static::$_allowedTypes;
 
         if (isset($_SERVER['HTTP_ACCEPT'])) {
             $accept = strtolower(str_replace(' ', '', $_SERVER['HTTP_ACCEPT']));
@@ -119,49 +129,52 @@ abstract class Request
         return null;
     }
 
-    public function getCharset()
+    //
+    // TODO: Parse the options out, based on preference
+    //
+    public static function getCharset()
     {
         return $_SERVER['HTTP_ACCEPT_CHARSET'];
     }
 
-    public function getUserAgent()
+    public static function getUserAgent()
     {
-        return ($this->hasUserAgent()) ? $_SERVER['HTTP_USER_AGENT'] : null;
+        return (self::hasUserAgent()) ? $_SERVER['HTTP_USER_AGENT'] : null;
     }
 
-    public function hasUserAgent()
+    public static function hasUserAgent()
     {
         return !!isset($_SERVER['HTTP_USER_AGENT']);
     }
 
     public function getHeaders()
     {
-        return $this->_requestHeaders;
+        return static::$_requestHeaders;
     }
 
     public function getHeader($header)
     {
-        return isset($this->_requestHeaders[$header]) ? $this->_requestHeaders[$header] : null;
+        return isset(static::$_requestHeaders[$header]) ? static::$_requestHeaders[$header] : null;
     }
 
     public function getRequestPath()
     {
-        if (!empty($this->_validNamespaces)) {
-            $_parts = explode('/', $this->_requestPath);
-            if (in_array($_parts[0], $this->_validNamespaces)) {
+        if (!empty(static::$_validNamespaces)) {
+            $_parts = explode('/', static::$_requestPath);
+            if (in_array($_parts[0], static::$_validNamespaces)) {
                 array_shift($_parts);
                 return join('/', $_parts);
             }
         }
 
-        return $this->_requestPath;
+        return static::$_requestPath;
     }
 
     public function getNamespace()
     {
-        if (!empty($this->_validNamespaces)) {
-            $_parts = explode('/', $this->_requestPath);
-            if (in_array($_parts[0], $this->_validNamespaces)) {
+        if (!empty(static::$_validNamespaces)) {
+            $_parts = explode('/', static::$_requestPath);
+            if (in_array($_parts[0], static::$_validNamespaces)) {
                 return $_parts[0];
             }
         }
@@ -172,7 +185,7 @@ abstract class Request
     public function setContent($data)
     {
         try {
-            $this->_data = JSON::decode($data);
+            static::$_data = JSON::decode($data);
         } catch (HTTPException $e) {
             Event::emit('error', [$e, $this]);
         }
@@ -180,12 +193,12 @@ abstract class Request
 
     public function getContent()
     {
-        return $this->_data;
+        return static::$_data;
     }
 
     public function getAuthData()
     {
-        $auth = $this->getHeader('Authorization');
+        $auth = static::getHeader('Authorization');
         $ret  = [];
 
         if (!empty($auth)) {
@@ -212,15 +225,15 @@ abstract class Request
         return (object)$ret;
     }
 
-    public function normalizePath($path)
+    public static function normalizePath($path)
     {
         $path = trim($path, '/');
         return empty($path) ? '/' : $path;
     }
 
-    protected function _setRequestHeaders()
+    protected static function _setRequestHeaders()
     {
-        $this->_requestHeaders = getallheaders();
+        static::$_requestHeaders = getallheaders();
     }
 
 }
