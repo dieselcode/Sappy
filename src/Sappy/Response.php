@@ -25,6 +25,7 @@
 namespace Sappy;
 
 use Sappy\Exceptions\HTTPException;
+use Sappy\Transport\JSON;
 
 /**
  * Response class
@@ -109,7 +110,6 @@ class Response
     {
         if ($app instanceof App) {
             $this->_app       = $app;
-            $this->_transport = $this->_app->transport();
         } else {
             Event::emit('error', [
                 new HTTPException('Invalid application passed to response object', 500),
@@ -139,7 +139,7 @@ class Response
     {
         if (array_key_exists($httpCode, $this->_validCodes)) {
             $this->_httpCode = $httpCode;
-            $this->_message = (!is_array($message)) ? array($message) : $message;
+            $this->_message = $message;
         } else {
             Event::emit('error', [
                 new HTTPException('Invalid HTTP response code was supplied', 500),
@@ -158,7 +158,12 @@ class Response
      */
     public function send($addedHeaders = [])
     {
-        $data = $this->_transport->encode($this->_message);
+        try {
+            $data = JSON::encode($this->_message);
+        } catch (HTTPException $e) {
+            Event::emit('error', [$e, $this->_app]);
+        }
+
         $primaryHeaders = [];
 
         // make sure we're using HTTP/1.1
@@ -179,7 +184,7 @@ class Response
         }
 
         if (!in_array(strtolower($this->_app->getRequestMethod()), $this->_noBody)) {
-            $primaryHeaders['Content-Type']     = $this->_transport->getContentType();
+            $primaryHeaders['Content-Type']     = JSON::getContentType();
             $primaryHeaders['Content-Length']   = strlen($data);
             $primaryHeaders['Content-MD5']      = base64_encode(md5($data, true));
         }

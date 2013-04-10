@@ -25,6 +25,7 @@
 namespace Sappy;
 
 use Sappy\Exceptions\HTTPException;
+use Sappy\Transport\JSON;
 
 /**
  * App class
@@ -45,6 +46,8 @@ class App extends Request
     private   $_methods          = ['get', 'head', 'options', 'post', 'patch', 'put', 'delete'];
     protected $_authorized       = true;
 
+    protected $_content          = null;
+
     private   $_projectURL       = 'https://github.com/dieselcode/Sappy';
     private   $_versionLocation  = 'https://raw.github.com/dieselcode/Sappy/master/VERSION';
 
@@ -60,13 +63,14 @@ class App extends Request
         $this->_validNamespaces = $namespaces;
         $this->_requestPath     = $this->normalizePath($_SERVER['REQUEST_URI']);
         $this->_requestHeaders  = apache_request_headers();
-        $this->_transport       = $this->getTransport();
         $this->_allowedTypes    = $allowedTypes;
         $this->_requestId       = sha1(uniqid(mt_rand(), true));
-        $this->setContent(@file_get_contents('php://input'));
 
         $this->_dummyRoutes();
         $this->_handleEvents();
+
+        // set the content after everything is all setup
+        $this->setContent(@file_get_contents('php://input'));
     }
 
     /**
@@ -129,11 +133,6 @@ class App extends Request
         return $this;
     }
 
-    public function transport()
-    {
-        return $this->_transport;
-    }
-
     public function on($event, callable $callback)
     {
         Event::on($event, $callback);
@@ -188,7 +187,7 @@ class App extends Request
                 $params     = $route->getParams($this);
 
                 // see if our method callback requires authorization
-                if ($callback['requireAuth'] !== false) {
+                if (!is_null($callback) && $callback['requireAuth'] !== false) {
                     $authData = $this->getAuthData();
 
                     if ($authData === false) {

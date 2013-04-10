@@ -35,7 +35,6 @@ abstract class Request
     protected $_allowedTypes        = [];
     protected $_requestPath         = null;
     protected $_requestHeaders      = [];
-    protected $_transport           = null;
     protected $_data                = null;
     protected $_requestId           = null;
     protected $_useUTF8             = false;
@@ -80,15 +79,10 @@ abstract class Request
         return $remoteAddr;
     }
 
-    public function getAllowedTypes()
-    {
-        return $this->_allowedTypes;
-    }
-
     public function getAccept()
     {
         $acceptTypes  = [];
-        $allowedTypes = $this->getAllowedTypes();
+        $allowedTypes = $this->_allowedTypes;
 
         if (isset($_SERVER['HTTP_ACCEPT'])) {
             $accept = strtolower(str_replace(' ', '', $_SERVER['HTTP_ACCEPT']));
@@ -177,36 +171,16 @@ abstract class Request
 
     public function setContent($data)
     {
-        $this->_data = $data;
+        try {
+            $this->_data = JSON::decode($data);
+        } catch (HTTPException $e) {
+            Event::emit('error', [$e, $this]);
+        }
     }
 
     public function getContent()
     {
-        return $this->_transport->decode($this->_data);
-    }
-
-    public function getTransport()
-    {
-        $accept = $this->getAccept();
-
-        // user didn't specify, try and use our default handler
-        if (is_null($accept)) {
-            $accept = !empty($this->_allowedTypes) ? $this->_allowedTypes[0] : 'application/json';
-        }
-
-        // all better now... deploy the proper transport layer
-        switch ($accept) {
-            //
-            // TODO: Add more transports
-            //
-            default:
-            case 'application/json':
-                return new JSON();
-                break;
-            case 'text/plain':
-                return new Plain();
-                break;
-        }
+        return $this->_data;
     }
 
     public function getAuthData()

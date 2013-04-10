@@ -91,6 +91,13 @@ $api->route('/headers', function() use ($api) {
         return $response;
     });
 
+    $api->post(function($request, $response, $params) use ($api) {
+        $json = $request->getContent();
+        $response->write(200, $json);
+
+        return $response;
+    });
+
 });
 
 

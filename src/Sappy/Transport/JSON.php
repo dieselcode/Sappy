@@ -39,58 +39,32 @@ use Sappy\Event;
  */
 class JSON
 {
-    /**
-     * @var string
-     */
-    private $_contentType = 'application/json';
+    static $_contentType = 'application/json';
+    static $_data        = '';
 
-
-    public function __construct()
-    {
-    }
-
-    /**
-     * Encode array as a JSON representation
-     *
-     * @param  array $message
-     * @return string
-     * @throws HTTPException
-     */
-    public function encode($message)
+    public static function encode($message)
     {
         $data = json_encode($message);
 
-        if (($error = $this->_handleError()) !== true) {
-            Event::emit('error', [new HTTPException($error, 500), $this]);
+        if (($error = static::_handleError()) !== true) {
+            throw new HTTPException($error, 500);
         }
 
         return $data;
     }
 
-    /**
-     * Decode JSON as object/array
-     *
-     * @param  string   $message
-     * @return string
-     * @throws HTTPException
-     */
-    public function decode($message)
+    public static function decode($message, $decodeAsArray = false)
     {
-        $data = json_decode($message);
+        $data = json_decode($message, $decodeAsArray);
 
-        if (($error = $this->_handleError()) !== true) {
-            Event::emit('error', [new HTTPException($error, 500), $this]);
+        if (($error = static::_handleError()) !== true) {
+            throw new HTTPException($error, 400);
         }
 
         return $data;
     }
 
-    /**
-     * Handle JSON errors, and pass them on
-     *
-     * @return bool|string
-     */
-    private function _handleError()
+    private static function _handleError()
     {
         switch (json_last_error()) {
             case JSON_ERROR_NONE:
@@ -119,14 +93,9 @@ class JSON
         return ($message !== true) ? 'JSON Error: ' . $message : $message;
     }
 
-    /**
-     * Return current content type
-     *
-     * @return string
-     */
-    public function getContentType()
+    public static function getContentType()
     {
-        return $this->_contentType;
+        return static::$_contentType;
     }
 
 }
