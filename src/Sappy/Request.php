@@ -51,6 +51,11 @@ abstract class Request
         return $_SERVER['REQUEST_METHOD'];
     }
 
+    public function isSecure()
+    {
+        return !!(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off');
+    }
+
     public function getHTTPVersion()
     {
         @list(,$version) = explode('/', $_SERVER['SERVER_PROTOCOL'], 2);
