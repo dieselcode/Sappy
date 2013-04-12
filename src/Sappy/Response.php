@@ -104,8 +104,9 @@ class Response
     ];
 
 
-    public function __construct()
+    public function __construct($httpCode = 200, $message = [])
     {
+        $this->write($httpCode, $message);
     }
 
     public function headers($headers = [])
@@ -130,11 +131,6 @@ class Response
         if (array_key_exists($httpCode, $this->_validCodes)) {
             $this->_httpCode = $httpCode;
             $this->_message = $message;
-        } else {
-            Event::emit('error', [
-                new HTTPException('Invalid HTTP response code was supplied', 500),
-                $this
-            ]);
         }
 
         return $this;

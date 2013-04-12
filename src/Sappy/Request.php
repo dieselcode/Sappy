@@ -36,21 +36,41 @@ abstract class Request
     protected static $_requestId           = null;
 
 
+    /**
+     * Return the current request ID
+     *
+     * @return null|string
+     */
     public function getRequestId()
     {
         return static::$_requestId;
     }
 
+    /**
+     * Return the current request method (GET, POST, ...)
+     *
+     * @return string
+     */
     public static function getRequestMethod()
     {
         return $_SERVER['REQUEST_METHOD'];
     }
 
+    /**
+     * Check if the request was done securely
+     *
+     * @return bool
+     */
     public static function isSecure()
     {
         return !!(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off');
     }
 
+    /**
+     * Check if the request was made via AJAX
+     *
+     * @return bool
+     */
     public static function isAjax()
     {
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
@@ -60,17 +80,30 @@ abstract class Request
         return false;
     }
 
+    /**
+     * Return the requested HTTP version
+     *
+     * @return float
+     */
     public static function getHTTPVersion()
     {
-        @list(,$version) = explode('/', $_SERVER['SERVER_PROTOCOL'], 2);
-        return $version;
+        return (float)substr($_SERVER['SERVER_PROTOCOL'], -3);
     }
 
+    /**
+     * Get the requester's IP address
+     *
+     * @return null|float
+     */
     public static function getRemoteAddr()
     {
         return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null;
     }
 
+    /**
+     * Get the requester's IP address (cycle through proxies)
+     * @return null|float
+     */
     public static function getRealRemoteAddr()
     {
         $remoteAddr = self::getRemoteAddr();
@@ -114,26 +147,77 @@ abstract class Request
     // -------------------------------------------------------------
     //
 
+    /**
+     * Get the HTTP cookies for the current request
+     *
+     * @param  null       $cookieName
+     * @return array|null
+     */
+    public function getCookies($cookieName = null)
+    {
+        $out = [];
+        $cookies = static::getHeader('Cookie');
+
+        if (!is_null($cookies)) {
+            foreach (explode('; ', $cookies) as $k => $v) {
+                $out[$k] = $v;
+            }
+
+            if (!empty($cookieName)) {
+                return isset($out[$cookieName]) ? $out[$cookieName] : null;
+            } else {
+                return $out;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the requester's user agent
+     *
+     * @return null|string
+     */
     public static function getUserAgent()
     {
         return (self::hasUserAgent()) ? $_SERVER['HTTP_USER_AGENT'] : null;
     }
 
+    /**
+     * Check if the request has a user agent
+     *
+     * @return bool
+     */
     public static function hasUserAgent()
     {
         return !!isset($_SERVER['HTTP_USER_AGENT']);
     }
 
+    /**
+     * Return all request headers
+     *
+     * @return array
+     */
     public static function getHeaders()
     {
         return static::$_requestHeaders;
     }
 
+    /**
+     * Return a specified request header
+     *
+     * @param  $header
+     * @return null|string
+     */
     public static function getHeader($header)
     {
         return isset(static::$_requestHeaders[$header]) ? static::$_requestHeaders[$header] : null;
     }
 
+    /**
+     * Return the current *real* request path (sans namespace)
+     * @return null|string
+     */
     public static function getRequestPath()
     {
         if (!empty(static::$_validNamespaces)) {
@@ -147,6 +231,11 @@ abstract class Request
         return static::$_requestPath;
     }
 
+    /**
+     * Get the current requested namespace
+     *
+     * @return null
+     */
     public static function getNamespace()
     {
         if (!empty(static::$_validNamespaces)) {
@@ -159,16 +248,32 @@ abstract class Request
         return null;
     }
 
+    /**
+     * Set the current request content
+     *
+     * @param  $data
+     * @return void
+     */
     public static function setContent($data)
     {
         static::$_data = JSON::decode($data);
     }
 
+    /**
+     * Return the current request content
+     *
+     * @return mixed
+     */
     public static function getContent()
     {
         return static::$_data;
     }
 
+    /**
+     * Get authorization data via HTTP headers
+     *
+     * @return bool|object
+     */
     public static function getAuthData()
     {
         $auth = static::getHeader('Authorization');
@@ -198,12 +303,23 @@ abstract class Request
         return (object)$ret;
     }
 
+    /**
+     * Normalize a route/request path
+     *
+     * @param  $path
+     * @return string
+     */
     public static function normalizePath($path)
     {
         $path = trim($path, '/');
         return empty($path) ? '/' : $path;
     }
 
+    /**
+     * Set the current request headers
+     *
+     * @return void
+     */
     protected static function _setRequestHeaders()
     {
         static::$_requestHeaders = getallheaders();
