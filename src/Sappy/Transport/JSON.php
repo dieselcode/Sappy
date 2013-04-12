@@ -25,7 +25,6 @@
 namespace Sappy\Transport;
 
 use Sappy\Exceptions\HTTPException;
-use Sappy\Event;
 
 /**
  * JSON class
@@ -44,7 +43,7 @@ class JSON
 
     public static function encode($message)
     {
-        $data = json_encode($message);
+        $data = json_encode($message, JSON_PRETTY_PRINT);
 
         if (($error = static::_handleError()) !== true) {
             throw new HTTPException($error, 500);

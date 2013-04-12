@@ -99,7 +99,6 @@ $api->route('/headers', function() use ($api) {
 
 });
 
-
 // run the API model
 $api->run();
 

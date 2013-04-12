@@ -44,10 +44,8 @@ class Response
     private $_headers       = [];
     private $_httpCode      = 200;
     private $_noBody        = ['head', 'options'];
-    private $_app           = null;
-    private $_transport     = null;
 
-    private $_validCodes    = array(
+    private $_validCodes    = [
         100 => 'Continue',
         101 => 'Switching Protocols',
         102 => 'Processing',
@@ -103,7 +101,7 @@ class Response
         507 => 'Insufficient Storage',
         509 => 'Bandwidth Limit Exceeded',
         510 => 'Not Extended'
-    );
+    ];
 
 
     public function __construct()
@@ -146,16 +144,12 @@ class Response
      * Send header and content buffer to client
      *
      * @param  array $addedHeaders
+     * @throws HTTPException
      * @return void
      */
     public function send($addedHeaders = [])
     {
-        try {
-            $data = JSON::encode($this->_message);
-        } catch (HTTPException $e) {
-            Event::emit('error', [$e, $this->_app]);
-        }
-
+        $data = JSON::encode($this->_message);
         $primaryHeaders = [];
 
         // make sure we're using HTTP/1.1

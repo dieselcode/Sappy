@@ -24,8 +24,6 @@
 
 namespace Sappy;
 
-use Sappy\Exceptions\HTTPException;
-
 /**
  * Event class
  *
@@ -65,13 +63,7 @@ class Event
             $callback = static::$_eventHandlers[$event];
             $response = call_user_func_array($callback, $args);
 
-            // normally used for error events
-            if ($response instanceof Response) {
-                $headers = ($args[0] instanceof HTTPException) ? $args[0]->getHeaders() : [];
-                $response->send($headers);
-            } else {
-                return $response;
-            }
+            return $response;
         }
 
         return null;

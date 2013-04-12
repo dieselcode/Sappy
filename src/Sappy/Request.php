@@ -30,7 +30,6 @@ abstract class Request
 {
 
     protected static $_validNamespaces     = [];
-    protected static $_allowedTypes        = ['application/json'];
     protected static $_requestPath         = null;
     protected static $_requestHeaders      = [];
     protected static $_data                = null;
@@ -85,56 +84,35 @@ abstract class Request
         return $remoteAddr;
     }
 
-    //
-    // TODO: Change this to just parse the Accept header (and convert to static)
-    //
-    public function getAccept()
+    /**
+     * TODO: For the following four methods...
+     *
+     *  Break down the return output to a list of options that the client sends.
+     *  Order the list by priority and preference, base on what the breakdown returns.
+     */
+    public static function getAccept()
     {
-        $acceptTypes  = [];
-        $allowedTypes = static::$_allowedTypes;
+        return isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : null;
+    }
 
-        if (isset($_SERVER['HTTP_ACCEPT'])) {
-            $accept = strtolower(str_replace(' ', '', $_SERVER['HTTP_ACCEPT']));
-            $accept = explode(',', $accept);
+    public static function getAcceptCharset()
+    {
+        return isset($_SERVER['HTTP_ACCEPT_CHARSET']) ? $_SERVER['HTTP_ACCEPT_CHARSET'] : null;
+    }
 
-            foreach ($accept as $a) {
-                $q = 1;
+    public static function getAcceptLanguage()
+    {
+        return isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : null;
+    }
 
-                if (strpos($a, ';q=')) {
-                    list($a, $q) = explode(';q=', $a);
-                }
-
-                $acceptTypes[$a] = $q;
-            }
-
-            arsort($acceptTypes);
-
-            // if we didn't define any allowed mimes, then just return
-            if (empty($allowedTypes)) {
-                return $acceptTypes;
-            }
-
-            $allowedTypes = array_map('strtolower', $allowedTypes);
-
-            // let’s check our supported types:
-            foreach ($acceptTypes as $mime => $q) {
-                if ($q && in_array($mime, $allowedTypes)) {
-                    return $mime;
-                }
-            }
-        }
-
-        // no mime-type found
-        return null;
+    public static function getAcceptEncoding()
+    {
+        return isset($_SERVER['HTTP_ACCEPT_ENCODING']) ? $_SERVER['HTTP_ACCEPT_ENCODING'] : null;
     }
 
     //
-    // TODO: Parse the options out, based on preference
+    // -------------------------------------------------------------
     //
-    public static function getCharset()
-    {
-        return $_SERVER['HTTP_ACCEPT_CHARSET'];
-    }
 
     public static function getUserAgent()
     {
@@ -156,7 +134,7 @@ abstract class Request
         return isset(static::$_requestHeaders[$header]) ? static::$_requestHeaders[$header] : null;
     }
 
-    public function getRequestPath()
+    public static function getRequestPath()
     {
         if (!empty(static::$_validNamespaces)) {
             $_parts = explode('/', static::$_requestPath);
@@ -169,7 +147,7 @@ abstract class Request
         return static::$_requestPath;
     }
 
-    public function getNamespace()
+    public static function getNamespace()
     {
         if (!empty(static::$_validNamespaces)) {
             $_parts = explode('/', static::$_requestPath);
@@ -191,7 +169,7 @@ abstract class Request
         return static::$_data;
     }
 
-    public function getAuthData()
+    public static function getAuthData()
     {
         $auth = static::getHeader('Authorization');
         $ret  = [];
@@ -206,7 +184,7 @@ abstract class Request
                     break;
 
                 //
-                // TODO: See if this works properly... this just forwards the auth token forward
+                // TODO: See if this works properly... this just forwards the auth token
                 //
                 case 'Oauth':
                     $ret['token'] = $data;

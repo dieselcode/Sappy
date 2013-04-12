@@ -55,15 +55,13 @@ class App extends Request
      * App constructor
      *
      * @param array $namespaces
-     * @param array $allowedTypes
      */
-    public function __construct(array $namespaces = [], array $allowedTypes = [])
+    public function __construct(array $namespaces = [])
     {
         $this->_setRequestHeaders();
 
         static::$_validNamespaces = $namespaces;
         static::$_requestPath     = $this->normalizePath($_SERVER['REQUEST_URI']);
-        static::$_allowedTypes    = $allowedTypes;
         static::$_requestId       = sha1(uniqid(mt_rand(), true));
 
         $this->_dummyRoutes();
@@ -73,7 +71,7 @@ class App extends Request
         try {
             $this->setContent(@file_get_contents('php://input'));
         } catch (HTTPException $e) {
-            Event::emit('error', [$e, $this]);
+            $this->emit('error', [$e, $this]);
         }
     }
 
@@ -111,6 +109,11 @@ class App extends Request
         return null;
     }
 
+    /**
+     * Generate a software signature for the X-Powered-By header
+     *
+     * @return string
+     */
     public static function getSignature()
     {
         return sprintf('Sappy/%s (%s)', self::getVersion(), static::$_projectURL);
@@ -133,19 +136,42 @@ class App extends Request
 
         // activate the callback
         $callback();
-
-        // return ourselves for chaining
-        return $this;
     }
 
+    /**
+     * Set a handler for a specified named event
+     *
+     * @param string   $event
+     * @param callable $callback
+     */
     public function on($event, callable $callback)
     {
         Event::on($event, $callback);
     }
 
-    public function emit($event, $args)
+    /**
+     * Emit a named event with specified args
+     *
+     * @param string $event
+     * @param array  $args
+     *
+     * @return mixed|null
+     */
+    public function emit($event, array $args = [])
     {
-        return Event::emit($event, $args);
+        $response = Event::emit($event, $args);
+
+        if ($response instanceof Response) {
+            $headers = ($args[0] instanceof HTTPException) ? $args[0]->getHeaders() : [];
+
+            try {
+                $response->send($headers);
+            } catch (HTTPException $e) {
+                $this->emit('error', [$e, $this]);
+            }
+        }
+
+        return $response;
     }
 
     /**
@@ -181,7 +207,7 @@ class App extends Request
             if ($route instanceof Route) {
 
                 if (!$route->isValidNamespace($this)) {
-                    Event::emit('error', [
+                    $this->emit('error', [
                         new HTTPException('Invalid namespace for requested path', 403),
                         $this
                     ]);
@@ -196,7 +222,7 @@ class App extends Request
                     $authData = $this->getAuthData();
 
                     if ($authData === false) {
-                        Event::emit('error', [
+                        $this->emit('error', [
                             new HTTPException('Authorization did not succeed', 401),
                             $this
                         ]);
@@ -204,19 +230,19 @@ class App extends Request
 
                     if (Event::hasEvent('__AUTH__')) {
                         // emit the auth event and get the response
-                        $ret = Event::emit('__AUTH__', [$authData, $this]);
+                        $ret = $this->emit('__AUTH__', [$authData, $this]);
 
                         // if authorization succeeds, process our method callback
                         if ($ret === true) {
                             $this->runMethodCallback($route, $callback, $params);
                         } else {
-                            Event::emit('error', [
+                            $this->emit('error', [
                                 new HTTPException('Authorization did not succeed', 401),
                                 $this
                             ]);
                         }
                     } else {
-                        Event::emit('error', [
+                        $this->emit('error', [
                             new HTTPException('Could not authenticate properly; Server problem', 500),
                             $this
                         ]);
@@ -225,7 +251,7 @@ class App extends Request
                     $this->runMethodCallback($route, $callback, $params);
                 }
             } else {
-                Event::emit('error', [
+                $this->emit('error', [
                     new HTTPException('Requested route not found', 404),
                     $this
                 ]);
@@ -273,11 +299,10 @@ class App extends Request
     /**
      * Runs a callback for a specified HTTP method
      *
-     * @param  Route    $route
-     * @param  array    $callback
-     * @param  object   $params
+     * @param Route  $route
+     * @param mixed  $callback
+     * @param object $params
      * @return void
-     * @throws HTTPException
      */
     protected function runMethodCallback(Route $route, $callback, $params)
     {
@@ -298,9 +323,13 @@ class App extends Request
                     $headers = $response->getHeaders();
                 }
 
-                $response->send($headers);
+                try {
+                    $response->send($headers);
+                } catch (HTTPException $e) {
+                    $this->emit('error', [$e, $this]);
+                }
             } else {
-                Event::emit('error', [
+                $this->emit('error', [
                     new HTTPException('Requested method could not complete as requested', 500),
                     $this
                 ]);
@@ -308,17 +337,22 @@ class App extends Request
         } else {
             // Set the Allow HTTP header to reflect a list of allowed methods for this route
             $headers = ['Allow' => strtoupper(join(', ', $route->getAvailableMethods()))];
-            Event::emit('error', [
+            $this->emit('error', [
                 new HTTPException('Requested HTTP method not allowed/implemented for this route', 405, $headers),
                 $this
             ]);
         }
     }
 
+    /**
+     * Setup internal event handlers
+     *
+     * @return void
+     */
     private function _handleEvents()
     {
         //
-        // all errors are handled internally
+        // TODO: Add user-supplied logging to this, so they can debug
         //
         $this->on('error', function(HTTPException $exception, Request $request) {
             $response = new Response();
@@ -328,9 +362,11 @@ class App extends Request
         });
     }
 
-    //
-    // __version route is always accessible
-    //
+    /**
+     * Setup internal static routes
+     *
+     * @return void
+     */
     private function _dummyRoutes()
     {
         //
