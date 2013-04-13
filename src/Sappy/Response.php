@@ -139,20 +139,14 @@ class Response
     /**
      * Send header and content buffer to client
      *
-     * @param  array $addedHeaders
-     * @throws HTTPException
+     * @param array $addedHeaders
      * @return void
      */
     public function send($addedHeaders = [])
     {
         $data = JSON::encode($this->_message);
         $primaryHeaders = [];
-
-        // make sure we're using HTTP/1.1
-        if (App::getHTTPVersion() == 1.0) {
-            $this->_httpCode = 426;
-            $primaryHeaders['Upgrade'] = 'HTTP/1.1';
-        }
+        $gzipOk = false;
 
         http_response_code($this->_httpCode);
 
@@ -160,15 +154,15 @@ class Response
         $primaryHeaders['Connection']   = 'close';
         $primaryHeaders['X-Powered-By'] = App::getSignature();
 
-        if (App::getHTTPVersion() == 1.0) {
-            $this->_processHeaders($primaryHeaders);
-            exit;
-        }
-
         if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
             $primaryHeaders['Content-Type']     = JSON::getContentType();
             $primaryHeaders['Content-Length']   = strlen($data);
             $primaryHeaders['Content-MD5']      = base64_encode(md5($data, true));
+        }
+
+        if (App::getOption('use_gzip') == true && extension_loaded('zlib')) {
+            $primaryHeaders['Content-Encoding'] = 'gzip';
+            $gzipOk = true;
         }
 
         $this->_processHeaders($primaryHeaders);
@@ -177,6 +171,9 @@ class Response
 
         // HEAD and OPTIONS requests don't get a content body, just the headers
         if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
+            if ($gzipOk) {
+                ob_start('ob_gzhandler');
+            }
             echo $data;
         }
 

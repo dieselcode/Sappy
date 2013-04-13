@@ -44,6 +44,7 @@ class App extends Request
     protected $_currMethod       = null;
     private   $_methods          = ['get', 'head', 'options', 'post', 'patch', 'put', 'delete'];
     protected $_authorized       = true;
+    static    $_options          = [];
 
     protected $_content          = null;
 
@@ -55,9 +56,14 @@ class App extends Request
      * App constructor
      *
      * @param array $namespaces
+     * @param array $options
      */
-    public function __construct(array $namespaces = [])
+    public function __construct(array $namespaces = [], array $options = [])
     {
+        // parse out the user's options
+        $this->_setOptions($options);
+
+        // set the request headers
         $this->_setRequestHeaders();
 
         static::$_validNamespaces = $namespaces;
@@ -73,6 +79,43 @@ class App extends Request
         } catch (HTTPException $e) {
             $this->emit('error', [$e, $this]);
         }
+    }
+
+    /**
+     * Set default options for APP class
+     *
+     * @param  array $options
+     * @return void
+     */
+    private function _setOptions(array $options = [])
+    {
+        //
+        // Define default class options here
+        //
+        static::$_options = [
+            'use_gzip' => true,
+        ];
+
+        foreach ($options as $option => $value) {
+            if (array_key_exists($option, static::$_options)) {
+                static::$_options[$option] = $value;
+            }
+        }
+    }
+
+    /**
+     * Get a user or default option value
+     *
+     * @param  string $option
+     * @return null
+     */
+    public static function getOption($option)
+    {
+        if (array_key_exists($option, static::$_options)) {
+            return static::$_options[$option];
+        }
+
+        return null;
     }
 
     /**
@@ -154,7 +197,6 @@ class App extends Request
      *
      * @param string $event
      * @param array  $args
-     *
      * @return mixed|null
      */
     public function emit($event, array $args = [])
@@ -196,7 +238,6 @@ class App extends Request
      * Get callback for current route, and handle accordingly
      *
      * @return void
-     * @throws HTTPException
      */
     private function _launch()
     {

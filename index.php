@@ -24,16 +24,13 @@
 
 include 'vendor/autoload.php';
 
-//
-// For content negotiation to work, the user *MUST* send a valid 'Accept' header
-//  with a preferable mime type, i.e.:  Accept: application/json
-//
-// Will result in a 400 Bad Request error being sent back to the user if nothing
-//  suitable could be found.
-//
+$options = [
+    'use_gzip' => true,
+];
 
 $api = new \Sappy\App(
-    ['v1', 'v2']           // allowed namespaces
+    ['v1', 'v2'],           // allowed namespaces
+    $options
 );
 
 //

@@ -117,35 +117,33 @@ abstract class Request
         return $remoteAddr;
     }
 
-    /**
-     * TODO: For the following four methods...
-     *
-     *  Break down the return output to a list of options that the client sends.
-     *  Order the list by priority and preference, base on what the breakdown returns.
-     */
     public static function getAccept()
     {
-        return isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : null;
+        return isset($_SERVER['HTTP_ACCEPT']) ?
+            static::_parseHeaderValue($_SERVER['HTTP_ACCEPT']) :
+            null;
     }
 
     public static function getAcceptCharset()
     {
-        return isset($_SERVER['HTTP_ACCEPT_CHARSET']) ? $_SERVER['HTTP_ACCEPT_CHARSET'] : null;
+        return isset($_SERVER['HTTP_ACCEPT_CHARSET']) ?
+            static::_parseHeaderValue($_SERVER['HTTP_ACCEPT_CHARSET']) :
+            null;
     }
 
     public static function getAcceptLanguage()
     {
-        return isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : null;
+        return isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ?
+            static::_parseHeaderValue($_SERVER['HTTP_ACCEPT_LANGUAGE']) :
+            null;
     }
 
     public static function getAcceptEncoding()
     {
-        return isset($_SERVER['HTTP_ACCEPT_ENCODING']) ? $_SERVER['HTTP_ACCEPT_ENCODING'] : null;
+        return isset($_SERVER['HTTP_ACCEPT_ENCODING']) ?
+            static::_parseHeaderValue($_SERVER['HTTP_ACCEPT_ENCODING']) :
+            null;
     }
-
-    //
-    // -------------------------------------------------------------
-    //
 
     /**
      * Get the HTTP cookies for the current request
@@ -323,6 +321,35 @@ abstract class Request
     protected static function _setRequestHeaders()
     {
         static::$_requestHeaders = getallheaders();
+    }
+
+    /**
+     * Parse a header line into an array based on preference
+     *
+     * @param  $value
+     * @return array
+     */
+    private static function _parseHeaderValue($value)
+    {
+        $out = [];
+        $data = explode(',', str_replace(' ', '', $value));
+
+        foreach ($data as $val) {
+
+            $_val = $val;
+            $_qval = 1.0;
+
+            if (false !== strstr($val, ';q=')) {
+                list($_val, $tmp) = explode(';', $val);
+                $q = explode('=', $tmp);
+                $_qval = (float)$q[1];
+            }
+
+            $out[$_val] = $_qval;
+        }
+
+        arsort($out);
+        return $out;
     }
 
 }
