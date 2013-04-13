@@ -25,7 +25,7 @@
 include 'vendor/autoload.php';
 
 $options = [
-    'use_gzip' => true,
+    'use_output_compression' => true,
 ];
 
 $api = new \Sappy\App(

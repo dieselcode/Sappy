@@ -160,8 +160,7 @@ class Response
             $primaryHeaders['Content-MD5']      = base64_encode(md5($data, true));
         }
 
-        if (App::getOption('use_gzip') == true && extension_loaded('zlib')) {
-            $primaryHeaders['Content-Encoding'] = 'gzip';
+        if (App::getOption('use_output_compression') == true && extension_loaded('zlib')) {
             $gzipOk = true;
         }
 
@@ -172,6 +171,7 @@ class Response
         // HEAD and OPTIONS requests don't get a content body, just the headers
         if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
             if ($gzipOk) {
+                // ob_gzhandler sets the appropriate header for Content-Encoding for us
                 ob_start('ob_gzhandler');
             }
             echo $data;

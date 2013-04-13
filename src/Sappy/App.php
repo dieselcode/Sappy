@@ -93,7 +93,7 @@ class App extends Request
         // Define default class options here
         //
         static::$_options = [
-            'use_gzip' => true,
+            'use_output_compression' => true,
         ];
 
         foreach ($options as $option => $value) {
