@@ -24,6 +24,9 @@
 
 namespace Sappy;
 
+// RFC1123 date format
+const DATE_RFC1123 = 'D, d M Y H:i:s \G\M\T';
+
 use Sappy\Exceptions\HTTPException;
 
 /**
@@ -70,7 +73,6 @@ class App extends Request
         static::$_requestPath     = $this->normalizePath($_SERVER['REQUEST_URI']);
         static::$_requestId       = sha1(uniqid(mt_rand(), true));
 
-        $this->_dummyRoutes();
         $this->_handleEvents();
 
         // set the content after everything is all setup
@@ -94,6 +96,8 @@ class App extends Request
         //
         static::$_options = [
             'use_output_compression' => true,
+            'generate_content_md5'   => true,
+            'cache_control'          => false,
         ];
 
         foreach ($options as $option => $value) {
@@ -130,23 +134,6 @@ class App extends Request
 
         if (file_exists($vFile)) {
             return file_get_contents($vFile);
-        }
-
-        return null;
-    }
-
-    /**
-     * Gets current available version from remote server
-     *
-     * @return null|string
-     */
-    public static function getCurrentVersion()
-    {
-        clearstatcache();
-        $latest = @file_get_contents(static::$_versionLocation);
-
-        if (!empty($latest)) {
-            return $latest;
         }
 
         return null;
@@ -371,7 +358,7 @@ class App extends Request
                 }
             } else {
                 $this->emit('error', [
-                    new HTTPException('Requested method could not complete as requested', 500),
+                    new HTTPException('Missing response data for method', 500),
                     $this
                 ]);
             }
@@ -401,50 +388,6 @@ class App extends Request
 
             return $response;
         });
-    }
-
-    /**
-     * Setup internal static routes
-     *
-     * @return void
-     */
-    private function _dummyRoutes()
-    {
-        //
-        // Get version of Sappy (and check against remote version)
-        //
-        $this->route('/__version', function() {
-            $this->get(function($request, $response, $params) {
-                $remoteVer  = $this->getCurrentVersion();
-                $localVer   = $this->getVersion();
-                $message    = '';
-
-                switch (version_compare($localVer, $remoteVer)) {
-                    case -1:
-                        $message = 'outdated; update available (' . $remoteVer . ')';
-                        break;
-                    case 0:
-                        $message = 'up-to-date';
-                        break;
-                    case 1:
-                        $message = 'experimental code; revert to ' . $remoteVer . ' for stability';
-                        break;
-                }
-
-                $response->write(200, [
-                    'Sappy' => [
-                        'version' => [
-                            'local'   => $localVer,
-                            'current' => $remoteVer,
-                            'status'  => $message
-                        ]
-                    ]
-                ]);
-
-                return $response;
-            });
-        });
-
     }
 
 }

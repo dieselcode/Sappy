@@ -146,7 +146,15 @@ class Response
     {
         $data = JSON::encode($this->_message);
         $primaryHeaders = [];
-        $gzipOk = false;
+
+        // this is the only place we need this function
+        $processHeaders = function($headers = []) {
+            if (!empty($headers)) {
+                foreach ($headers as $k => $v) {
+                    header(sprintf('%s: %s', $k, $v), true);
+                }
+            }
+        };
 
         http_response_code($this->_httpCode);
 
@@ -155,38 +163,45 @@ class Response
         $primaryHeaders['X-Powered-By'] = App::getSignature();
 
         if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
-            $primaryHeaders['Content-Type']     = JSON::getContentType();
-            $primaryHeaders['Content-Length']   = strlen($data);
-            $primaryHeaders['Content-MD5']      = base64_encode(md5($data, true));
+            $primaryHeaders['Content-Type']   = JSON::getContentType();
+            $primaryHeaders['Content-Length'] = strlen($data);
+
+            if (App::getOption('generate_content_md5')) {
+                $primaryHeaders['Content-MD5'] = base64_encode(md5($data, true));
+            }
         }
 
-        if (App::getOption('use_output_compression') == true && extension_loaded('zlib')) {
-            $gzipOk = true;
+        // check for cache control, and set accordingly
+        $cache_age = App::getOption('cache_control');
+
+        if ($cache_age !== false) {
+            $primaryHeaders['Cache-Control'] = 'private, max-age=' . $cache_age;
+            $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, time() + $cache_age);
+            $primaryHeaders['Pragma']        = 'cache';
+        } else {
+            $primaryHeaders['Cache-Control'] = 'no-cache, no-store';
+            $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, strtotime('-1 year'));
+            $primaryHeaders['Pragma']        = 'no-cache';
         }
 
-        $this->_processHeaders($primaryHeaders);
-        $this->_processHeaders($addedHeaders);
-        $this->_processHeaders($this->_headers);
+        // process and output all of our response headers
+        $processHeaders($primaryHeaders);
+        $processHeaders($addedHeaders);
+        $processHeaders($this->_headers);
 
         // HEAD and OPTIONS requests don't get a content body, just the headers
         if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
-            if ($gzipOk) {
-                // ob_gzhandler sets the appropriate header for Content-Encoding for us
+            if (App::getOption('use_output_compression') && extension_loaded('zlib')) {
+                // ob_gzhandler sets the following headers for us:
+                //  - Content-Encoding
+                //  - Vary
                 ob_start('ob_gzhandler');
             }
+            
             echo $data;
         }
 
         exit;
-    }
-
-    private function _processHeaders($headers = [])
-    {
-        if (!empty($headers)) {
-            foreach ($headers as $k => $v) {
-                header(sprintf('%s: %s', $k, $v), true);
-            }
-        }
     }
 
 }

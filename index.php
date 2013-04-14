@@ -22,10 +22,13 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-include 'vendor/autoload.php';
+require_once 'vendor/autoload.php';
 
 $options = [
-    'use_output_compression' => true,
+    'use_output_compression' => true,      // enable support for output conpression (gzip, deflate, etc.)
+    'generate_content_md5'   => true,      // generate Content-MD5 header
+    'cache_control'          => false,     // set to an integer to enable (int is max age in seconds);
+                                           //  false to turn off (no-cache)
 ];
 
 $api = new \Sappy\App(
