@@ -197,7 +197,7 @@ class Response
                 //  - Vary
                 ob_start('ob_gzhandler');
             }
-            
+
             echo $data;
         }
 
