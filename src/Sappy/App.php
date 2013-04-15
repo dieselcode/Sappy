@@ -115,7 +115,7 @@ class App extends Request
             if (in_array($method, $this->_methods)) {
                 $this->_currMethod = $method;
                 $requireAuth = isset($args[1]) ? $args[1] : false;
-                $this->getCurrentRoute()->setMethodCallback($method, $args[0], $requireAuth);
+                $this->getCurrentRoute()->setMethodCallback($method, $args[0]->bindTo($this, $this), $requireAuth);
             }
         }
 
@@ -139,6 +139,7 @@ class App extends Request
             'cache_control'          => false,
             'use_sappy_signature'    => true,
             'require_user_agent'     => false,
+            'http_send_keepalive'    => false,
         ];
 
         foreach ($options as $option => $value) {
@@ -187,26 +188,26 @@ class App extends Request
      */
     public static function getSignature()
     {
-        return sprintf('Sappy/%s (%s)', self::getVersion(), static::$_projectURL);
+        return sprintf('Sappy/%s (%s)', static::getVersion(), static::$_projectURL);
     }
 
     /**
      * Create a new routing pattern
      *
-     * @param           $route
+     * @param  string   $route
      * @param  callable $callback
      * @param  array    $validNamespaces
-     * @return object
+     * @return void
      */
     public function route($route, callable $callback, array $validNamespaces = [])
     {
-        $_route = new Route($this->normalizePath($route), $callback, $validNamespaces);
+        $_route = new Route($this->normalizePath($route), $validNamespaces);
 
         $this->_currRoute = $_route;
         $this->_routes[$_route->getHash()] = $_route;
 
         // activate the callback
-        $callback();
+        call_user_func_array($callback->bindTo($this, $this), []);
     }
 
     /**
@@ -218,7 +219,7 @@ class App extends Request
      */
     public function on($event, callable $callback)
     {
-        Event::on($event, $callback);
+        Event::on($event, $callback->bindTo($this, $this));
     }
 
     /**
@@ -255,6 +256,7 @@ class App extends Request
     public function extend($name, callable $callback)
     {
         if (!array_key_exists($name, $this->_methods)) {
+            // bind to the current object so we can work within the scope
             $this->_extendables[$name] = $callback->bindTo($this, $this);
         }
     }
@@ -374,7 +376,7 @@ class App extends Request
     {
         if (!is_null($callback) && is_array($callback)) {
             $closure = $callback['callback'];
-            $response = $closure($this, new Response(), $params);
+            $response = call_user_func_array($closure->bindTo($this, $this), [$this, new Response(), $params]);
 
             if ($response instanceof Response) {
                 //

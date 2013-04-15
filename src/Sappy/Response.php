@@ -139,7 +139,8 @@ class Response
     /**
      * Send header and content buffer to client
      *
-     * @param array $addedHeaders
+     * @param  array $addedHeaders
+     * @throws HTTPException
      * @return void
      */
     public function send($addedHeaders = [])
@@ -159,7 +160,7 @@ class Response
         http_response_code($this->_httpCode);
 
         $primaryHeaders['Status']       = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
-        $primaryHeaders['Connection']   = 'close';
+        $primaryHeaders['Connection']   = (App::getOption('http_send_keepalive')) ? 'keep-alive' : 'close';
 
         if (App::getOption('use_sappy_signature')) {
             $primaryHeaders['X-Powered-By'] = App::getSignature();

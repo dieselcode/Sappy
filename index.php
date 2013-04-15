@@ -30,6 +30,7 @@ $options = [
     'cache_control'          => false,     // set to an integer to enable (int is max age in seconds);
                                            //  false to turn off (no-cache)
     'require_user_agent'     => true,      // require the request to have a valid user agent string
+    'http_send_keepalive'    => false,     // true = 'keep-alive'; false = 'close'
 ];
 
 $api = new \Sappy\App(
@@ -50,7 +51,7 @@ $api->extend('foo', function() {
 // capture auth event (this is called when a method requires auth)
 //  auth events must return true or false
 //
-$api->on('__AUTH__', function($auth, $request) use ($api) {
+$api->on('__AUTH__', function($auth, $request) {
     if (is_object($auth)) {
         if ($auth->type == 'Basic') {
             if ($auth->user == 'Andrew' && $auth->password == 'foo') {
@@ -65,21 +66,22 @@ $api->on('__AUTH__', function($auth, $request) use ($api) {
 //
 // Fake rate limit event callback
 //
-$api->on('rate.limit.headers', function($remoteAddr) use ($api) {
+$api->on('rate.limit.headers', function($remoteAddr) {
     // .. do something with the remoteAddr
     return ['X-RateLimit-Limit' => 5000, 'X-RateLimit-Remaining' => 4999];
 });
 
 
 /**
- * Testing extend above
+ * Testing extend above ($this is the new way of doing routing)
  */
-$api->route('/test_extend', function() use ($api) {
-    $api->get(function($request, $response, $params) use ($api) {
-        $response->write(200, $api->foo());
+$api->route('/test_extend', function() {
+    $this->get(function($request, $response, $params) {
+        $array = array_merge($this->foo(), $this->getHeaders());
+        $response->write(200, $array);
 
         return $response;
-    });
+    }, true);
 });
 
 
@@ -88,33 +90,15 @@ $api->route('/test_extend', function() use ($api) {
  *
  * available on any defined namespace
  */
-$api->route('/headers', function() use ($api) {
-
-    $api->get(function($request, $response, $params) use ($api) {
-        $rateHeaders = $api->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
+$api->route('/headers', function() {
+    $this->get(function($request, $response, $params) {
+        $rateHeaders = $this->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
 
         $response->write(200, $request->getHeaders());  // send the request headers back
         $response->headers($rateHeaders);
 
         return $response;
     });
-
-    $api->head(function($request, $response, $params) use ($api) {
-        $rateHeaders = $api->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
-
-        $response->write(200);   // this is a head request, send no content; just a status
-        $response->headers($rateHeaders);
-
-        return $response;
-    });
-
-    $api->post(function($request, $response, $params) use ($api) {
-        $json = $request->getContent();
-        $response->write(200, $json);
-
-        return $response;
-    });
-
 });
 
 // run the API model

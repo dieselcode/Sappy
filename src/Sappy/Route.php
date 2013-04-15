@@ -46,10 +46,9 @@ class Route
      * Route constructor
      *
      * @param array    $route
-     * @param callable $callback
      * @param array    $namespaces
      */
-    public function __construct($route, callable $callback, array $namespaces = [])
+    public function __construct($route, array $namespaces = [])
     {
         $this->_path            = $route;
         $this->_hash            = $this->_generateRouteHash($route);
