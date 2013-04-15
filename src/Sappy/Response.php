@@ -160,7 +160,10 @@ class Response
 
         $primaryHeaders['Status']       = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
         $primaryHeaders['Connection']   = 'close';
-        $primaryHeaders['X-Powered-By'] = App::getSignature();
+
+        if (App::getOption('use_sappy_signature')) {
+            $primaryHeaders['X-Powered-By'] = App::getSignature();
+        }
 
         if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
             $primaryHeaders['Content-Type']   = JSON::getContentType();
@@ -189,7 +192,6 @@ class Response
         $processHeaders($addedHeaders);
         $processHeaders($this->_headers);
 
-        // HEAD and OPTIONS requests don't get a content body, just the headers
         if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
             if (App::getOption('use_output_compression') && extension_loaded('zlib')) {
                 // ob_gzhandler sets the following headers for us:

@@ -48,11 +48,11 @@ class App extends Request
     private   $_methods          = ['get', 'head', 'options', 'post', 'patch', 'put', 'delete'];
     protected $_authorized       = true;
     static    $_options          = [];
+    protected $_extendables      = [];
 
     protected $_content          = null;
 
     static    $_projectURL       = 'https://github.com/dieselcode/Sappy';
-    static    $_versionLocation  = 'https://raw.github.com/dieselcode/Sappy/master/VERSION';
 
 
     /**
@@ -63,6 +63,8 @@ class App extends Request
      */
     public function __construct(array $namespaces = [], array $options = [])
     {
+        date_default_timezone_set('GMT');
+
         // parse out the user's options
         $this->_setOptions($options);
 
@@ -75,12 +77,49 @@ class App extends Request
 
         $this->_handleEvents();
 
+        // make sure we have a valid user agent (if required)
+        if (App::getOption('require_user_agent')) {
+            if (!$this->hasUserAgent()) {
+                $this->emit('error', [
+                    new HTTPException('Valid user agent required for access', 400),
+                    $this
+                ]);
+            }
+        }
+
         // set the content after everything is all setup
         try {
             $this->setContent(@file_get_contents('php://input'));
         } catch (HTTPException $e) {
             $this->emit('error', [$e, $this]);
         }
+    }
+
+    /**
+     * Magic method.
+     *
+     * @param  string $method
+     * @param  array  $args
+     * @return mixed
+     */
+    public function __call($method, $args)
+    {
+        if (!empty($this->_extendables)) {
+            if (array_key_exists($method, $this->_extendables)) {
+                $callback = $this->_extendables[$method];
+                return call_user_func_array($callback, $args);
+            }
+        }
+
+        if (!empty($this->_currRoute)) {
+            if (in_array($method, $this->_methods)) {
+                $this->_currMethod = $method;
+                $requireAuth = isset($args[1]) ? $args[1] : false;
+                $this->getCurrentRoute()->setMethodCallback($method, $args[0], $requireAuth);
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -98,6 +137,8 @@ class App extends Request
             'use_output_compression' => true,
             'generate_content_md5'   => true,
             'cache_control'          => false,
+            'use_sappy_signature'    => true,
+            'require_user_agent'     => false,
         ];
 
         foreach ($options as $option => $value) {
@@ -171,8 +212,9 @@ class App extends Request
     /**
      * Set a handler for a specified named event
      *
-     * @param string   $event
-     * @param callable $callback
+     * @param  string   $event
+     * @param  callable $callback
+     * @return void
      */
     public function on($event, callable $callback)
     {
@@ -182,8 +224,8 @@ class App extends Request
     /**
      * Emit a named event with specified args
      *
-     * @param string $event
-     * @param array  $args
+     * @param  string $event
+     * @param  array  $args
      * @return mixed|null
      */
     public function emit($event, array $args = [])
@@ -204,20 +246,16 @@ class App extends Request
     }
 
     /**
-     * Magic method.  Allows for creating method callbacks on individual routes
+     * Extend the Sappy class with new functionality
      *
-     * @param  string $method
-     * @param  array  $args
+     * @param  string   $name
+     * @param  callable $callback
      * @return void
      */
-    public function __call($method, $args)
+    public function extend($name, callable $callback)
     {
-        if (!empty($this->_currRoute)) {
-            if (in_array($method, $this->_methods)) {
-                $this->_currMethod = $method;
-                $requireAuth = isset($args[1]) ? $args[1] : false;
-                $this->getCurrentRoute()->setMethodCallback($method, $args[0], $requireAuth);
-            }
+        if (!array_key_exists($name, $this->_methods)) {
+            $this->_extendables[$name] = $callback->bindTo($this, $this);
         }
     }
 

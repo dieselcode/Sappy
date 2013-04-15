@@ -25,16 +25,22 @@
 require_once 'vendor/autoload.php';
 
 $options = [
-    'use_output_compression' => true,      // enable support for output conpression (gzip, deflate, etc.)
+    'use_output_compression' => true,      // enable support for output compression (gzip, deflate, etc.)
     'generate_content_md5'   => true,      // generate Content-MD5 header
     'cache_control'          => false,     // set to an integer to enable (int is max age in seconds);
                                            //  false to turn off (no-cache)
+    'require_user_agent'     => true,      // require the request to have a valid user agent string
 ];
 
 $api = new \Sappy\App(
     ['v1', 'v2'],           // allowed namespaces
     $options
 );
+
+// testing extending capabilities
+$api->extend('foo', function() {
+    return [$this->getUserAgent(), $this->getRemoteAddr()];
+});
 
 //
 // Auth events need only return true or false
@@ -62,6 +68,18 @@ $api->on('__AUTH__', function($auth, $request) use ($api) {
 $api->on('rate.limit.headers', function($remoteAddr) use ($api) {
     // .. do something with the remoteAddr
     return ['X-RateLimit-Limit' => 5000, 'X-RateLimit-Remaining' => 4999];
+});
+
+
+/**
+ * Testing extend above
+ */
+$api->route('/test_extend', function() use ($api) {
+    $api->get(function($request, $response, $params) use ($api) {
+        $response->write(200, $api->foo());
+
+        return $response;
+    });
 });
 
 
