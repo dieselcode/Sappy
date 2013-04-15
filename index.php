@@ -31,6 +31,7 @@ $options = [
                                            //  false to turn off (no-cache)
     'require_user_agent'     => true,      // require the request to have a valid user agent string
     'http_send_keepalive'    => false,     // true = 'keep-alive'; false = 'close'
+    'allow_app_extending'    => true,      // allow app extending (extend methods into core class)
 ];
 
 $api = new \Sappy\App(
@@ -77,11 +78,11 @@ $api->on('rate.limit.headers', function($remoteAddr) {
  */
 $api->route('/test_extend', function() {
     $this->get(function($request, $response, $params) {
-        $array = array_merge($this->foo(), $this->getHeaders());
+        $array = array_merge($this->foo(), $request->getHeaders());
         $response->write(200, $array);
 
         return $response;
-    }, true);
+    }, true);   // require auth to use this method
 });
 
 

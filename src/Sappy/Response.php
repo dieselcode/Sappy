@@ -123,10 +123,10 @@ class Response
      * Write status code and data to a buffer for an HTTP packet
      *
      * @param  integer $httpCode
-     * @param  mixed   $message
+     * @param  array   $message
      * @return object
      */
-    public function write($httpCode, $message = [])
+    public function write($httpCode, array $message = [])
     {
         if (array_key_exists($httpCode, $this->_validCodes)) {
             $this->_httpCode = $httpCode;

@@ -77,6 +77,14 @@ class App extends Request
 
         $this->_handleEvents();
 
+        // see if the API creator wants to allow extending
+        if (App::getOption('allow_app_extending')) {
+            // brainfuckery
+            $this->_extend('extend', function($name, callable $callback) {
+                $this->_extend($name, $callback);
+            });
+        }
+
         // make sure we have a valid user agent (if required)
         if (App::getOption('require_user_agent')) {
             if (!$this->hasUserAgent()) {
@@ -116,10 +124,12 @@ class App extends Request
                 $this->_currMethod = $method;
                 $requireAuth = isset($args[1]) ? $args[1] : false;
                 $this->getCurrentRoute()->setMethodCallback($method, $args[0]->bindTo($this, $this), $requireAuth);
+                return true;
             }
         }
 
-        return true;
+        // if we get here, trigger a PHP error
+        trigger_error(sprintf("Error: Method '%s' not found in class '%s'", $method, get_class($this)));
     }
 
     /**
@@ -140,6 +150,7 @@ class App extends Request
             'use_sappy_signature'    => true,
             'require_user_agent'     => false,
             'http_send_keepalive'    => false,
+            'allow_app_extending'    => false,
         ];
 
         foreach ($options as $option => $value) {
@@ -253,7 +264,7 @@ class App extends Request
      * @param  callable $callback
      * @return void
      */
-    public function extend($name, callable $callback)
+    protected function _extend($name, callable $callback)
     {
         if (!array_key_exists($name, $this->_methods)) {
             // bind to the current object so we can work within the scope
