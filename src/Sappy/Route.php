@@ -75,6 +75,27 @@ class Route
         return $this->_path;
     }
 
+    public function getPathRegexp()
+    {
+        $regexp = '#';
+
+        foreach (explode('/', $this->_path) as $section) {
+            if ($section[0] !== ':' && $section[0] !== '?') {
+                $regexp .= $section;
+            } else {
+                $regexp .= '(/[^/]+)';
+
+                if ($section[0] === '?') {
+                    $regexp .= '?';
+                }
+            }
+        }
+
+        $regexp .= '#';
+
+        return $regexp;
+    }
+
     /**
      * Retrieve the callback options for requested method
      *
@@ -135,6 +156,9 @@ class Route
             if (substr($v, 0, 1) == ':') {
                 $val = substr($v, 1);
                 $obj[$val] = isset($request[$k]) ? $request[$k] : null;
+            } elseif (substr($v, 0, 2) == '?:' && isset($request[$k])) {
+                $val = substr($v, 2);
+                $obj[$val] = $request[$k];
             }
         }
 
@@ -169,7 +193,8 @@ class Route
      */
     public function isValidPath($routePath, $requestPath)
     {
-        return !!preg_match('#^'.preg_replace('#(:(\w+))#', '(\w+)', $routePath).'$#', $requestPath);
+        return !!preg_match($this->getPathRegexp($routePath), $requestPath);
+        // return !!preg_match('#^'.preg_replace('#(:(\w+))#', '(\w+)', $routePath).'$#', $requestPath);
     }
 
     /**

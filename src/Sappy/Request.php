@@ -289,7 +289,7 @@ abstract class Request
                 //
                 // TODO: See if this works properly... this just forwards the auth token
                 //
-                case 'Oauth':
+                case 'OAuth':
                     $ret['token'] = $data;
                     $ret['type']  = $type;
                     break;

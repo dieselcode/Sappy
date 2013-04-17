@@ -105,23 +105,10 @@ class TestApi extends Sappy\App
     // testing heirarchy
     public function testParamRoutes()
     {
-        $this->route('/params/:test1', function() {
+        $this->route('/params/:test1/?:test2', function() {
             $this->get(function($request, $response, $params) {
                 $response->write(200, (array)$params);
-                return $response;
-            });
-        });
 
-        $this->route('/params/:test1/:test2', function() {
-            $this->get(function($request, $response, $params) {
-                $response->write(200, (array)$params);
-                return $response;
-            });
-        });
-
-        $this->route('/params/:test1/:test2/:test3', function() {
-            $this->get(function($request, $response, $params) {
-                $response->write(200, (array)$params);
                 return $response;
             });
         });
