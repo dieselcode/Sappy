@@ -49,6 +49,7 @@ class App extends Request
     protected $_authorized       = true;
     static    $_options          = [];
     protected $_extendables      = [];
+    protected $_eventHandlers    = [];
 
     protected $_content          = null;
 
@@ -149,7 +150,6 @@ class App extends Request
             'cache_control'          => false,
             'use_sappy_signature'    => true,
             'require_user_agent'     => false,
-            'http_send_keepalive'    => false,
             'allow_app_extending'    => false,
         ];
 
@@ -230,7 +230,7 @@ class App extends Request
      */
     public function on($event, callable $callback)
     {
-        Event::on($event, $callback->bindTo($this, $this));
+        $this->_eventHandlers[$event] = $callback->bindTo($this, $this);
     }
 
     /**
@@ -242,19 +242,25 @@ class App extends Request
      */
     public function emit($event, array $args = [])
     {
-        $response = Event::emit($event, $args);
+        $response = null;
 
-        if ($response instanceof Response) {
-            $headers = ($args[0] instanceof HTTPException) ? $args[0]->getHeaders() : [];
+        if (isset($this->_eventHandlers[$event])) {
+            $callback = $this->_eventHandlers[$event];
+            $response = call_user_func_array($callback, $args);
 
-            try {
-                $response->send($headers);
-            } catch (HTTPException $e) {
-                $this->emit('error', [$e, $this]);
+            if ($response instanceof Response) {
+                $headers = ($args[0] instanceof HTTPException) ? $args[0]->getHeaders() : [];
+
+                try {
+                    $response->send($headers);
+                } catch (HTTPException $e) {
+                    $this->emit('error', [$e, $this]);
+                }
             }
         }
 
         return $response;
+
     }
 
     /**
@@ -307,7 +313,7 @@ class App extends Request
                         ]);
                     }
 
-                    if (Event::hasEvent('__AUTH__')) {
+                    if (isset($this->_eventHandlers['__AUTH__'])) {
                         // emit the auth event and get the response
                         $ret = $this->emit('__AUTH__', [$authData, $this]);
 

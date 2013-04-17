@@ -24,85 +24,85 @@
 
 require_once 'vendor/autoload.php';
 
-$options = [
-    'use_output_compression' => true,      // enable support for output compression (gzip, deflate, etc.)
-    'generate_content_md5'   => true,      // generate Content-MD5 header
-    'cache_control'          => false,     // set to an integer to enable (int is max age in seconds);
-                                           //  false to turn off (no-cache)
-    'require_user_agent'     => true,      // require the request to have a valid user agent string
-    'http_send_keepalive'    => false,     // true = 'keep-alive'; false = 'close'
-    'allow_app_extending'    => true,      // allow app extending (extend methods into core class)
-];
+class TestApi extends Sappy\App
+{
 
-$api = new \Sappy\App(
-    ['v1', 'v2'],           // allowed namespaces
-    $options
-);
+    private $options = array(
+        'use_output_compression' => true,
+        'generate_content_md5'   => true,
+        'cache_control'          => false,
+        'require_user_agent'     => true,
+        'http_send_keepalive'    => false,
+        'allow_app_extending'    => true,
+    );
 
-// testing extending capabilities
-$api->extend('foo', function() {
-    return [$this->getUserAgent(), $this->getRemoteAddr()];
-});
 
-//
-// Auth events need only return true or false
-//
-//  __auth__ is a builtin event name (cannot be overridden)
-//
-// capture auth event (this is called when a method requires auth)
-//  auth events must return true or false
-//
-$api->on('__AUTH__', function($auth, $request) {
-    if (is_object($auth)) {
-        if ($auth->type == 'Basic') {
-            if ($auth->user == 'Andrew' && $auth->password == 'foo') {
-                return true;
-            }
-        }
+    public function __construct($namespaces = [])
+    {
+        parent::__construct($namespaces, $this->options);
+
+        $this->setExtendables();
+        $this->setCallbacks();
+        $this->setRoutes();
     }
 
-    return false;
-});
+    public function setExtendables()
+    {
+        // becomes available as $this->foo()
+        $this->extend('foo', function() {
+            return [$this->getUserAgent(), $this->getRemoteAddr()];
+        });
+    }
 
-//
-// Fake rate limit event callback
-//
-$api->on('rate.limit.headers', function($remoteAddr) {
-    // .. do something with the remoteAddr
-    return ['X-RateLimit-Limit' => 5000, 'X-RateLimit-Remaining' => 4999];
-});
+    public function setCallbacks()
+    {
+        // internal callback, used for all auth requests
+        $this->on('__AUTH__', function($auth, $request) {
+            if (is_object($auth)) {
+                if ($auth->type == 'Basic') {
+                    if ($auth->user == 'Andrew' && $auth->password == 'foo') {
+                        return true;
+                    }
+                }
+            }
 
+            return false;
+        });
 
-/**
- * Testing extend above ($this is the new way of doing routing)
- */
-$api->route('/test_extend', function() {
-    $this->get(function($request, $response, $params) {
-        $array = array_merge($this->foo(), $request->getHeaders());
-        $response->write(200, $array);
+        // dummy callback, just shows how to add return headers to be used
+        $this->on('rate.limit.headers', function($remoteAddr) {
+            // .. do something with the remoteAddr
+            return ['X-RateLimit-Limit' => 5000, 'X-RateLimit-Remaining' => 4999];
+        });
+    }
 
-        return $response;
-    }, true);   // require auth to use this method
-});
+    public function setRoutes()
+    {
+        // test the extendables... $this->foo()
+        $this->route('/test_extend', function() {
+            $this->get(function($request, $response, $params) {
+                $array = array_merge($this->foo(), $request->getHeaders());
+                $response->write(200, $array);
 
+                return $response;
+            }, true);   // require auth to use this method
+        });
 
-/**
- * For debugging... viewing headers
- *
- * available on any defined namespace
- */
-$api->route('/headers', function() {
-    $this->get(function($request, $response, $params) {
-        $rateHeaders = $this->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
+        // send the request headers back to the user
+        $this->route('/headers', function() {
+            $this->get(function($request, $response, $params) {
+                $rateHeaders = $this->emit('rate.limit.headers', [$request->getRealRemoteAddr()]);
 
-        $response->write(200, $request->getHeaders());  // send the request headers back
-        $response->headers($rateHeaders);
+                $response->write(200, $request->getHeaders());  // send the request headers back
+                $response->headers($rateHeaders);
 
-        return $response;
-    });
-});
+                return $response;
+            });
+        });
+    }
+}
 
-// run the API model
+$api = new TestApi(['v1','v2']);
 $api->run();
 
 ?>

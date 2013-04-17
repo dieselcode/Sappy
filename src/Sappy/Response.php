@@ -159,8 +159,7 @@ class Response
 
         http_response_code($this->_httpCode);
 
-        $primaryHeaders['Status']       = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
-        $primaryHeaders['Connection']   = (App::getOption('http_send_keepalive')) ? 'keep-alive' : 'close';
+        $primaryHeaders['Status']     = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
 
         if (App::getOption('use_sappy_signature')) {
             $primaryHeaders['X-Powered-By'] = App::getSignature();
