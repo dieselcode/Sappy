@@ -44,6 +44,7 @@ class TestApi extends Sappy\App
         $this->setExtendables();
         $this->setCallbacks();
         $this->setRoutes();
+        $this->testParamRoutes();
     }
 
     public function setExtendables()
@@ -96,6 +97,31 @@ class TestApi extends Sappy\App
                 $response->write(200, $request->getHeaders());  // send the request headers back
                 $response->headers($rateHeaders);
 
+                return $response;
+            });
+        });
+    }
+
+    // testing heirarchy
+    public function testParamRoutes()
+    {
+        $this->route('/params/:test1', function() {
+            $this->get(function($request, $response, $params) {
+                $response->write(200, (array)$params);
+                return $response;
+            });
+        });
+
+        $this->route('/params/:test1/:test2', function() {
+            $this->get(function($request, $response, $params) {
+                $response->write(200, (array)$params);
+                return $response;
+            });
+        });
+
+        $this->route('/params/:test1/:test2/:test3', function() {
+            $this->get(function($request, $response, $params) {
+                $response->write(200, (array)$params);
                 return $response;
             });
         });

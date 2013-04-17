@@ -208,7 +208,7 @@ class App extends Request
      * @param  string   $route
      * @param  callable $callback
      * @param  array    $validNamespaces
-     * @return void
+     * @return object
      */
     public function route($route, callable $callback, array $validNamespaces = [])
     {
@@ -219,6 +219,8 @@ class App extends Request
 
         // activate the callback
         call_user_func_array($callback->bindTo($this, $this), []);
+
+        return $this;
     }
 
     /**
