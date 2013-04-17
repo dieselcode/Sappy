@@ -194,7 +194,6 @@ class Route
     public function isValidPath($routePath, $requestPath)
     {
         return !!preg_match($this->getPathRegexp($routePath), $requestPath);
-        // return !!preg_match('#^'.preg_replace('#(:(\w+))#', '(\w+)', $routePath).'$#', $requestPath);
     }
 
     /**

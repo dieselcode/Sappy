@@ -339,7 +339,7 @@ class App extends Request
                 }
             } else {
                 $this->emit('error', [
-                    new HTTPException('Requested route not found', 404),
+                    new HTTPException('Requested route not found or required parameter mismatch', 404),
                     $this
                 ]);
             }
