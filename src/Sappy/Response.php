@@ -104,16 +104,31 @@ class Response
     ];
 
 
+    /**
+     * @param int   $httpCode
+     * @param array $message
+     */
     public function __construct($httpCode = 200, $message = [])
     {
         $this->write($httpCode, $message);
     }
 
+    /**
+     * Set additional headers for the response
+     *
+     * @param  array $headers
+     * @return void
+     */
     public function headers($headers = [])
     {
         $this->_headers = $headers;
     }
 
+    /**
+     * Get the added headers for the response
+     *
+     * @return array
+     */
     public function getHeaders()
     {
         return $this->_headers;
@@ -182,7 +197,7 @@ class Response
             $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, time() + $cache_age);
             $primaryHeaders['Pragma']        = 'cache';
         } else {
-            $primaryHeaders['Cache-Control'] = 'no-cache, no-store';
+            $primaryHeaders['Cache-Control'] = 'no-cache, no-store, max-age=0, must-revalidate';
             $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, strtotime('-1 year'));
             $primaryHeaders['Pragma']        = 'no-cache';
         }
@@ -201,9 +216,12 @@ class Response
             }
 
             echo $data;
-        }
 
-        exit;
+            // if output buffering is on, ensure we output the buffer and clean up
+            if (ob_get_level() != 0) {
+                ob_end_flush();
+            }
+        }
     }
 
 }

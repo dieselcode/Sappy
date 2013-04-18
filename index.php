@@ -105,6 +105,8 @@ class TestApi extends Sappy\App
     // testing heirarchy
     public function testParamRoutes()
     {
+        // first param is required, second is optional
+        //  - second will only be set if it exists
         $this->route('/params/:test1/?:test2', function() {
             $this->get(function($request, $response, $params) {
                 $response->write(200, (array)$params);

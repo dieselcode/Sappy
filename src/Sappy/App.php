@@ -151,6 +151,7 @@ class App extends Request
             'use_sappy_signature'    => true,
             'require_user_agent'     => false,
             'allow_app_extending'    => false,
+            'use_json_prettyprint'   => false,
         ];
 
         foreach ($options as $option => $value) {
