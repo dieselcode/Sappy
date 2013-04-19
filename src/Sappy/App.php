@@ -302,7 +302,7 @@ class App extends Request
 
                 $method     = strtolower($this->getRequestMethod());
                 $callback   = $route->getMethodCallback($method);
-                $params     = $route->getParams($this);
+                $params     = new Params($route->getParams($this));
 
                 // see if our method callback requires authorization
                 if (!is_null($callback) && $callback['requireAuth'] !== false) {
