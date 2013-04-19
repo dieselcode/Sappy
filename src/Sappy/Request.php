@@ -291,7 +291,6 @@ abstract class Request
                 //
                 case 'OAuth':
                     $ret['token'] = $data;
-                    $ret['type']  = $type;
                     break;
             }
         } else {

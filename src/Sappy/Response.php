@@ -216,12 +216,9 @@ class Response
             }
 
             echo $data;
-
-            // if output buffering is on, ensure we output the buffer and clean up
-            if (ob_get_level() != 0) {
-                ob_end_flush();
-            }
         }
+
+        exit;
     }
 
 }

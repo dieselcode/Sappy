@@ -263,7 +263,6 @@ class App extends Request
         }
 
         return $response;
-
     }
 
     /**
@@ -311,7 +310,7 @@ class App extends Request
 
                     if ($authData === false) {
                         $this->emit('error', [
-                            new HTTPException('Authorization did not succeed', 401),
+                            new HTTPException('Authorization did not succeed (1)', 401),
                             $this
                         ]);
                     }
@@ -325,7 +324,7 @@ class App extends Request
                             $this->runMethodCallback($route, $callback, $params);
                         } else {
                             $this->emit('error', [
-                                new HTTPException('Authorization did not succeed', 401),
+                                new HTTPException('Authorization did not succeed (2)', 401),
                                 $this
                             ]);
                         }
@@ -390,7 +389,7 @@ class App extends Request
      * @param Route  $route
      * @param mixed  $callback
      * @param object $params
-     * @return void
+     * @return mixed
      */
     protected function runMethodCallback(Route $route, $callback, $params)
     {
@@ -444,7 +443,7 @@ class App extends Request
         //
         $this->on('error', function(HTTPException $exception, Request $request) {
             $response = new Response();
-            $response->write($exception->getCode(), ['message' => $exception->getMessage()]);
+            $response->write($exception->getCode(), ['message' => $exception->getMessage()])->send();
 
             return $response;
         });
