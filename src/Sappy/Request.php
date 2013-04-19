@@ -320,7 +320,29 @@ abstract class Request
      */
     protected static function _setRequestHeaders()
     {
-        static::$_requestHeaders = getallheaders();
+        $http = [];
+
+        $parseHeader = function ($name) {
+            $out   = [];
+            $parts = explode('_', $name);
+            array_shift($parts);
+
+            foreach ($parts as $value) {
+                $out[] = ucfirst(strtolower($value));
+            }
+
+            return join('-', $out);
+        };
+
+        foreach ($_SERVER as $k => $v) {
+            if (substr($k, 0, 5) == 'HTTP_') {
+                $http[$parseHeader($k)] = $v;
+            } elseif ($k == 'CONTENT_TYPE') {
+                $http['Content-Type'] = $v;
+            }
+        }
+
+        static::$_requestHeaders = $http;
     }
 
     /**
