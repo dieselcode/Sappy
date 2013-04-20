@@ -44,10 +44,12 @@ class FileSystem
 
     public function setCache($name, $contents)
     {
-        if ($this->exists($name)) {
-            if (file_put_contents($this->_getFullCachePath($name), serialize($contents))) {
-                return true;
-            }
+        if (!$this->exists($name)) {
+            touch($this->_getFullCachePath($name));
+        }
+
+        if (file_put_contents($this->_getFullCachePath($name), serialize($contents))) {
+            return true;
         }
 
         return false;

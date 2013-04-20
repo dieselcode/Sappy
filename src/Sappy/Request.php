@@ -24,6 +24,7 @@
 
 namespace Sappy;
 
+use Sappy\Exceptions\HTTPException;
 use Sappy\Transport\JSON;
 
 /**
@@ -39,11 +40,14 @@ use Sappy\Transport\JSON;
 abstract class Request
 {
 
-    protected static $_validNamespaces     = [];
-    protected static $_requestPath         = null;
-    protected static $_requestHeaders      = [];
-    protected static $_data                = null;
-    protected static $_requestId           = null;
+    protected static $_validNamespaces = [];
+    protected static $_requestPath     = null;
+    protected static $_requestHeaders  = [];
+    protected static $_data            = null;
+    protected static $_requestId       = null;
+
+    protected static $_authLocation    = '\Sappy\Auth\\';
+    protected static $_allowedAuth     = ['Basic', 'OAuth', 'OAuth2', 'Bearer'];
 
 
     /**
@@ -314,32 +318,31 @@ abstract class Request
     /**
      * Get authorization data via HTTP headers
      *
-     * @return bool|object
+     * @return object
+     * @throws HTTPException
      */
     public static function getAuthData()
     {
         $auth = static::getHeader('Authorization');
-        $ret  = [];
 
         if (!empty($auth)) {
-            list($type, $data) = explode(' ', $auth);
+            list($type, $data) = explode(' ', $auth, 2);
 
-            switch ($type) {
-                case 'Basic':
-                    list($user, $password) = explode(':', base64_decode($data));
-                    $ret = ['type' => $type, 'user' => $user, 'password' => $password];
-                    break;
+            if (in_array($type, static::$_allowedAuth)) {
+                $classStr = static::$_authLocation . $type;
 
-                case 'OAuth':
-                    $ret['type']  = $type;
-                    $ret['token'] = $data;
-                    break;
+                if (class_exists($classStr)) {
+                    $class = new $classStr($data);
+                    return $class->getData();
+                } else {
+                    throw new HTTPException('Authorization scheme not found', 403);
+                }
+            } else {
+                throw new HTTPException('Authorization scheme not allowed', 403);
             }
-        } else {
-            return false;
         }
 
-        return (object)$ret;
+        return false;
     }
 
     /**
@@ -380,6 +383,8 @@ abstract class Request
                 $http[$parseHeader($k)] = $v;
             } elseif ($k == 'CONTENT_TYPE') {
                 $http['Content-Type'] = $v;
+            } elseif ($k == 'REDIRECT_HTTP_AUTHORIZATION') {
+                $http['Authorization'] = $v;
             }
         }
 

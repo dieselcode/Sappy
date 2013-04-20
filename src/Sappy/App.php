@@ -28,6 +28,7 @@ namespace Sappy;
 const DATE_RFC1123 = 'D, d M Y H:i:s \G\M\T';
 
 use Sappy\Exceptions\HTTPException;
+use Sappy\Tools\ErrorHandler;
 
 /**
  * App class
@@ -46,7 +47,6 @@ class App extends Request
     protected $_currRoute        = null;
     protected $_currMethod       = null;
     private   $_methods          = ['get', 'head', 'options', 'post', 'patch', 'put', 'delete'];
-    protected $_authorized       = true;
     static    $_options          = [];
     protected $_extendables      = [];
     protected $_eventHandlers    = [];
@@ -303,7 +303,12 @@ class App extends Request
 
                 // see if our method callback requires authorization
                 if (!is_null($callback) && $callback['requireAuth'] !== false) {
-                    $authData = $this->getAuthData();
+
+                    try {
+                        $authData = $this->getAuthData();
+                    } catch (HTTPException $e) {
+                        $this->emit('error', [$e, $this]);
+                    }
 
                     if ($authData === false) {
                         $this->emit('error', [
@@ -438,7 +443,7 @@ class App extends Request
         //
         // TODO: Add user-supplied logging to this, so they can debug
         //
-        $this->on('error', function(HTTPException $exception, Request $request) {
+        $this->on('error', function(HTTPException $exception, $request = null) {
             $response = new Response();
             $response->write($exception->getCode(), ['message' => $exception->getMessage()]);
 
