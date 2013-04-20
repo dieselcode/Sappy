@@ -24,6 +24,16 @@
 
 namespace Sappy;
 
+/**
+ * Params class
+ *
+ * Simple container for holding passed parameters for routes
+ *
+ * @author      Andrew Heebner <andrew.heebner@gmail.com>
+ * @copyright   (c)2013, Andrew Heebner
+ * @license     MIT
+ * @package     Sappy
+ */
 class Params extends \ArrayObject
 {
 

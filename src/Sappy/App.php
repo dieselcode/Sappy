@@ -66,6 +66,11 @@ class App extends Request
     {
         date_default_timezone_set('GMT');
 
+        if (App::getOption('use_error_handler')) {
+            set_error_handler(array($this, '_internalErrorHandler'));
+            register_shutdown_function(array($this, '_internalShutdownHandler'));
+        }
+
         // parse out the user's options
         $this->_setOptions($options);
 
@@ -152,6 +157,7 @@ class App extends Request
             'require_user_agent'     => false,
             'allow_app_extending'    => false,
             'use_json_prettyprint'   => false,
+            'use_error_handler'      => true,
         ];
 
         foreach ($options as $option => $value) {
@@ -443,10 +449,43 @@ class App extends Request
         //
         $this->on('error', function(HTTPException $exception, Request $request) {
             $response = new Response();
-            $response->write($exception->getCode(), ['message' => $exception->getMessage()])->send();
+            $response->write($exception->getCode(), ['message' => $exception->getMessage()]);
 
             return $response;
         });
+    }
+
+    protected function _internalErrorHandler($errno, $errstr, $errfile, $errline)
+    {
+        if (!(error_reporting() & $errno)) {
+            return;
+        }
+
+        $getErrorType = function($errno) {
+            $errors = [E_USER_ERROR => 'ERROR', E_USER_NOTICE => 'NOTICE', E_USER_WARNING => 'WARNING'];
+
+            foreach ($errors as $error => $string) {
+                if ($error === $errno) {
+                    return $string;
+                }
+            }
+
+            return 'Unknown';
+        };
+
+        $this->emit('error', [
+            new HTTPException(sprintf('[%s] %s (in "%s" on line %d)',
+                $getErrorType($errno), $errstr, $errfile, $errline),
+            500),
+            $this
+        ]);
+
+        return true;
+    }
+
+    protected function _internalShutdownHandler()
+    {
+        restore_error_handler();
     }
 
 }

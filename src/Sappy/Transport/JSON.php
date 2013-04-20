@@ -99,4 +99,9 @@ class JSON
         return static::$_contentType;
     }
 
+    public static function setContentType($contentType)
+    {
+        static::$_contentType = $contentType;
+    }
+
 }

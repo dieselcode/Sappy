@@ -26,6 +26,10 @@ namespace Sappy;
 
 use Sappy\Transport\JSON;
 
+/**
+ * Class Request
+ * @package Sappy
+ */
 abstract class Request
 {
 
@@ -117,6 +121,11 @@ abstract class Request
         return $remoteAddr;
     }
 
+    /**
+     * Get the accepted content-types from the client
+     *
+     * @return array|null
+     */
     public static function getAccept()
     {
         return isset($_SERVER['HTTP_ACCEPT']) ?
@@ -124,6 +133,11 @@ abstract class Request
             null;
     }
 
+    /**
+     * Get the accepted charsets from the client
+     *
+     * @return array|null
+     */
     public static function getAcceptCharset()
     {
         return isset($_SERVER['HTTP_ACCEPT_CHARSET']) ?
@@ -131,6 +145,11 @@ abstract class Request
             null;
     }
 
+    /**
+     * Get the accepted languages from the client
+     *
+     * @return array|null
+     */
     public static function getAcceptLanguage()
     {
         return isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ?
@@ -138,6 +157,11 @@ abstract class Request
             null;
     }
 
+    /**
+     * Get the accepted encodings from the client
+     *
+     * @return array|null
+     */
     public static function getAcceptEncoding()
     {
         return isset($_SERVER['HTTP_ACCEPT_ENCODING']) ?
@@ -268,6 +292,20 @@ abstract class Request
     }
 
     /**
+     * Allow API creator to set their own custom JSON content-type
+     *    ex: application/vnd.sappy+json
+     *
+     * @param  $contentType
+     * @return void
+     */
+    public static function setContentType($contentType)
+    {
+        if (strtolower(substr($contentType, -4)) == 'json') {
+            JSON::setContentType($contentType);
+        }
+    }
+
+    /**
      * Get authorization data via HTTP headers
      *
      * @return bool|object
@@ -280,15 +318,12 @@ abstract class Request
         if (!empty($auth)) {
             list($type, $data) = explode(' ', $auth);
 
-            switch($type) {
+            switch ($type) {
                 case 'Basic':
                     list($user, $password) = explode(':', base64_decode($data));
                     $ret = ['type' => $type, 'user' => $user, 'password' => $password];
                     break;
 
-                //
-                // TODO: See if this works properly... this just forwards the auth token
-                //
                 case 'OAuth':
                     $ret['type']  = $type;
                     $ret['token'] = $data;

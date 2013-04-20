@@ -75,25 +75,28 @@ class Route
         return $this->_path;
     }
 
+    /**
+     * Generate a regular expression based on the route path
+     *
+     * @return string
+     */
     public function getPathRegexp()
     {
-        $regexp = '#';
+        $regexp = [];
 
         foreach (explode('/', $this->_path) as $section) {
             if ($section[0] !== ':' && $section[0] !== '?') {
-                $regexp .= $section;
+                $regexp[] = $section;
             } else {
-                $regexp .= '(/[^/]+)';
+                $regexp[] = '(/[^/]+)';
 
                 if ($section[0] === '?') {
-                    $regexp .= '?';
+                    $regexp[] = '?';
                 }
             }
         }
 
-        $regexp .= '#';
-
-        return $regexp;
+        return '#' . join('', $regexp) . '#';
     }
 
     /**

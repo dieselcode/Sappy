@@ -34,12 +34,17 @@ class TestApi extends Sappy\App
         'require_user_agent'     => true,
         'http_send_keepalive'    => false,
         'allow_app_extending'    => true,
+        'use_json_prettyprint'   => true,
+        'use_error_handler'      => true,
     );
 
 
     public function __construct($namespaces = [])
     {
         parent::__construct($namespaces, $this->options);
+
+        // set our own custom content type (must be a json type string, ending in 'json')
+        $this->setContentType('application/vnd.sappy+json');
 
         $this->setExtendables();
         $this->setCallbacks();
