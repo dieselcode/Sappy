@@ -22,7 +22,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-require_once 'vendor/autoload.php';
+require_once 'autoloader.php';
 
 class TestApi extends Sappy\App
 {
