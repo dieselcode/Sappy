@@ -27,8 +27,14 @@ namespace Sappy;
 use Sappy\Transport\JSON;
 
 /**
- * Class Request
- * @package Sappy
+ * Request class
+ *
+ * Abstract class supplying numerous methods for abstracting the HTTP request
+ *
+ * @author      Andrew Heebner <andrew.heebner@gmail.com>
+ * @copyright   (c)2013, Andrew Heebner
+ * @license     MIT
+ * @package     Sappy
  */
 abstract class Request
 {

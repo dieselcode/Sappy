@@ -135,7 +135,7 @@ class App extends Request
         }
 
         // if we get here, trigger a PHP error
-        trigger_error(sprintf("Error: Method '%s' not found in class '%s'", $method, get_class($this)));
+        trigger_error(sprintf('Method "%s" not found in class "%s"', $method, get_class($this)), E_USER_WARNING);
     }
 
     /**
@@ -455,10 +455,19 @@ class App extends Request
         });
     }
 
+    /**
+     * Internal error handler for set_error_handler
+     *
+     * @param  integer $errno
+     * @param  string  $errstr
+     * @param  string  $errfile
+     * @param  integer $errline
+     * @return bool
+     */
     protected function _internalErrorHandler($errno, $errstr, $errfile, $errline)
     {
         if (!(error_reporting() & $errno)) {
-            return;
+            return false;
         }
 
         $getErrorType = function($errno) {
@@ -483,6 +492,11 @@ class App extends Request
         return true;
     }
 
+    /**
+     * Internal shutdown handler for register_shutdown_handler
+     *
+     * @return void
+     */
     protected function _internalShutdownHandler()
     {
         restore_error_handler();
