@@ -366,26 +366,30 @@ abstract class Request
     {
         $http = [];
 
-        $parseHeader = function ($name) {
-            $out   = [];
-            $parts = explode('_', $name);
-            array_shift($parts);
+        if (!function_exists('getallheaders')) {
+            $parseHeader = function ($name) {
+                $out   = [];
+                $parts = explode('_', $name);
+                array_shift($parts);
 
-            foreach ($parts as $value) {
-                $out[] = ucfirst(strtolower($value));
+                foreach ($parts as $value) {
+                    $out[] = ucfirst(strtolower($value));
+                }
+
+                return join('-', $out);
+            };
+
+            foreach ($_SERVER as $k => $v) {
+                if (substr($k, 0, 5) == 'HTTP_') {
+                    $http[$parseHeader($k)] = $v;
+                } elseif ($k == 'CONTENT_TYPE') {
+                    $http['Content-Type'] = $v;
+                } elseif (!isset($_SERVER['HTTP_AUTHORIZATION']) && $k == 'REDIRECT_HTTP_AUTHORIZATION') {
+                    $http['Authorization'] = $v;
+                }
             }
-
-            return join('-', $out);
-        };
-
-        foreach ($_SERVER as $k => $v) {
-            if (substr($k, 0, 5) == 'HTTP_') {
-                $http[$parseHeader($k)] = $v;
-            } elseif ($k == 'CONTENT_TYPE') {
-                $http['Content-Type'] = $v;
-            } elseif ($k == 'REDIRECT_HTTP_AUTHORIZATION') {
-                $http['Authorization'] = $v;
-            }
+        } else {
+            $http = getallheaders();
         }
 
         static::$_requestHeaders = $http;
