@@ -22,7 +22,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-require_once 'autoloader.php';
+require_once 'vendor/autoload.php';
 
 class TestApi extends Sappy\App
 {
@@ -35,7 +35,6 @@ class TestApi extends Sappy\App
         'http_send_keepalive'    => false,
         'allow_app_extending'    => true,
         'use_json_prettyprint'   => true,
-        'use_error_handler'      => true,
     );
 
 
