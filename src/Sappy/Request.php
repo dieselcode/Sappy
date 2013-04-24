@@ -305,7 +305,7 @@ abstract class Request
      * Allow API creator to set their own custom JSON content-type
      *    ex: application/vnd.sappy+json
      *
-     * @param  $contentType
+     * @param  string $contentType
      * @return void
      */
     public static function setContentType($contentType)

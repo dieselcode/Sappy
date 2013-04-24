@@ -83,14 +83,12 @@ class Response
         415 => 'Unsupported Media Type',
         416 => 'Requested Range Not Satisfiable',
         417 => 'Expectation Failed',
-        418 => 'I\'m a teapot',
         422 => 'Unprocessable Entity',
         423 => 'Locked',
         424 => 'Failed Dependency',
         425 => 'Unordered Collection',
         426 => 'Upgrade Required',
         449 => 'Retry With',
-        450 => 'Blocked by Windows Parental Controls',
         500 => 'Internal Server Error',
         501 => 'Not Implemented',
         502 => 'Bad Gateway',
@@ -117,11 +115,13 @@ class Response
      * Set additional headers for the response
      *
      * @param  array $headers
-     * @return void
+     * @return object
      */
     public function headers($headers = [])
     {
         $this->_headers = $headers;
+
+        return $this;
     }
 
     /**

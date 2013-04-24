@@ -39,20 +39,22 @@ class Route
 
     protected $_path            = '';
     protected $_hash            = '';
+    protected $_regexp          = '';
     protected $_methodCallbacks = [];
     protected $_validNamespaces = [];
 
     /**
      * Route constructor
      *
-     * @param array    $route
-     * @param array    $namespaces
+     * @param mixed $route
+     * @param array $namespaces
      */
     public function __construct($route, array $namespaces = [])
     {
-        $this->_path            = $route;
-        $this->_hash            = $this->_generateRouteHash($route);
-        $this->_validNamespaces = $namespaces;
+        $this->_path   = $route;
+        $this->_hash   = $this->_generateRouteHash($route);
+
+        $this->setNamespaces($namespaces);
     }
 
     /**
@@ -83,8 +85,9 @@ class Route
     public function getPathRegexp()
     {
         $regexp = [];
+        $parts  = explode('/', $this->_path);
 
-        foreach (explode('/', $this->_path) as $section) {
+        foreach ($parts as $section) {
             if ($section[0] !== ':' && $section[0] !== '?') {
                 $regexp[] = $section;
             } else {
@@ -150,10 +153,13 @@ class Route
      */
     public function getParams($request)
     {
-        $obj = [];
+        $obj = new \ArrayObject();
+
+        // remove the query string
+        $requestPath = explode('?', $request->getRequestPath(), 2);
 
         $params  = explode('/', $this->_path);
-        $request = explode('/', $request->getRequestPath());
+        $request = explode('/', $requestPath[0]);
 
         foreach ($params as $k => $v) {
             if (substr($v, 0, 1) == ':') {
@@ -165,9 +171,7 @@ class Route
             }
         }
 
-        unset($params, $request);
-
-        return (object)$obj;
+        return $obj;
     }
 
     /**
@@ -185,6 +189,17 @@ class Route
             'callback'    => $callback,
             'requireAuth' => $requireAuth
         ];
+    }
+
+    /**
+     * Set valid namespaces for this route
+     *
+     * @param  array $namespaces
+     * @return void
+     */
+    public function setNamespaces(array $namespaces = [])
+    {
+        $this->_validNamespaces = $namespaces;
     }
 
     /**

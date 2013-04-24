@@ -31,11 +31,11 @@ namespace Sappy\Interfaces;
  */
 interface AuthInterface
 {
+
     /**
-     * Basic Auth constructor
+     * Auth interface constructor
      *
-     * @param  $authData
-     * @return void
+     * @param $authData
      */
     public function __construct($authData);
 

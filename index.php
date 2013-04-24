@@ -62,6 +62,7 @@ class TestApi extends Sappy\App
     public function setCallbacks()
     {
         // internal callback, used for all auth requests
+        //  __AUTH__ must return true or false
         $this->on('__AUTH__', function($auth, $request) {
             if (is_object($auth)) {
                 if ($auth->type == 'Basic') {
@@ -112,12 +113,11 @@ class TestApi extends Sappy\App
         // first param is required, second is optional
         //  - second will only be set if it exists
         $this->route('/params/:test1/?:test2', function() {
-            $this->get(function(\Sappy\Request $request, \Sappy\Response $response, \Sappy\Params $params) {
+            $this->get(function($request, $response, $params) {
                 $response->write(200, (array)$params);
-
                 return $response;
             });
-        });
+        })->namespaces(['v1']);  // only available on the /v1 namespace
     }
 }
 

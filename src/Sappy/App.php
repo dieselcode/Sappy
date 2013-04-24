@@ -28,7 +28,6 @@ namespace Sappy;
 const DATE_RFC1123 = 'D, d M Y H:i:s \G\M\T';
 
 use Sappy\Exceptions\HTTPException;
-use Sappy\Tools\ErrorHandler;
 
 /**
  * App class
@@ -222,6 +221,19 @@ class App extends Request
     }
 
     /**
+     * Set valid namespaces for current route
+     *
+     * @param  array $namespaces
+     * @return object
+     */
+    public function namespaces(array $namespaces = [])
+    {
+        $this->getCurrentRoute()->setNamespaces($namespaces);
+
+        return $this;
+    }
+
+    /**
      * Set a handler for a specified named event
      *
      * @param  string   $event
@@ -254,7 +266,7 @@ class App extends Request
                 try {
                     $response->send($headers);
                 } catch (HTTPException $e) {
-                    $this->emit('error', [$e, $this]);
+                    $this->emit('error', [$e]);
                 }
             }
         }
@@ -284,6 +296,10 @@ class App extends Request
      */
     private function _launch()
     {
+        //
+        // TODO: Redo the logic here... make it nicer
+        //
+
         if (!empty($this->_routes)) {
             // get a matching route
             $route = $this->getValidRoute($this);
@@ -291,15 +307,12 @@ class App extends Request
             if ($route instanceof Route) {
 
                 if (!$route->isValidNamespace($this)) {
-                    $this->emit('error', [
-                        new HTTPException('Invalid namespace for requested path', 403),
-                        $this
-                    ]);
+                    $this->emit('error', [new HTTPException('Invalid namespace for requested path', 403)]);
                 }
 
-                $method     = strtolower($this->getRequestMethod());
-                $callback   = $route->getMethodCallback($method);
-                $params     = new Params($route->getParams($this));
+                $method   = strtolower($this->getRequestMethod());
+                $callback = $route->getMethodCallback($method);
+                $params   = new Params($route->getParams($this));
 
                 // see if our method callback requires authorization
                 if (!is_null($callback) && $callback['requireAuth'] !== false) {
@@ -311,10 +324,7 @@ class App extends Request
                     }
 
                     if ($authData === false) {
-                        $this->emit('error', [
-                            new HTTPException('Authorization did not succeed (1)', 401),
-                            $this
-                        ]);
+                        $this->emit('error', [new HTTPException('Authorization did not succeed (1)', 401)]);
                     }
 
                     if (isset($this->_eventHandlers['__AUTH__'])) {
@@ -325,15 +335,11 @@ class App extends Request
                         if ($ret === true) {
                             $this->runMethodCallback($route, $callback, $params);
                         } else {
-                            $this->emit('error', [
-                                new HTTPException('Authorization did not succeed (2)', 401),
-                                $this
-                            ]);
+                            $this->emit('error', [new HTTPException('Authorization did not succeed (2)', 401)]);
                         }
                     } else {
                         $this->emit('error', [
-                            new HTTPException('Could not authenticate properly; Server problem', 500),
-                            $this
+                            new HTTPException('Could not authenticate properly; Missing auth callback', 500)
                         ]);
                     }
                 } else {
@@ -341,8 +347,7 @@ class App extends Request
                 }
             } else {
                 $this->emit('error', [
-                    new HTTPException('Requested route not found or required parameter mismatch', 404),
-                    $this
+                    new HTTPException('Requested route not found or required parameter mismatch', 404)
                 ]);
             }
 
@@ -395,6 +400,9 @@ class App extends Request
      */
     protected function runMethodCallback(Route $route, $callback, $params)
     {
+        //
+        // TODO: Redo the logic here... make it nicer
+        //
         if (!is_null($callback) && is_array($callback)) {
             $closure = $callback['callback'];
             $response = call_user_func_array($closure->bindTo($this, $this), [$this, new Response(), $params]);
@@ -415,20 +423,16 @@ class App extends Request
                 try {
                     $response->send($headers);
                 } catch (HTTPException $e) {
-                    $this->emit('error', [$e, $this]);
+                    $this->emit('error', [$e]);
                 }
             } else {
-                $this->emit('error', [
-                    new HTTPException('Missing response data for method', 500),
-                    $this
-                ]);
+                $this->emit('error', [new HTTPException('Missing response data for method', 500)]);
             }
         } else {
             // Set the Allow HTTP header to reflect a list of allowed methods for this route
             $headers = ['Allow' => strtoupper(join(', ', $route->getAvailableMethods()))];
             $this->emit('error', [
-                new HTTPException('Requested HTTP method not allowed/implemented for this route', 405, $headers),
-                $this
+                new HTTPException('Requested HTTP method not allowed/implemented for this route', 405, $headers)
             ]);
         }
     }
@@ -443,7 +447,7 @@ class App extends Request
         //
         // TODO: Add user-supplied logging to this, so they can debug
         //
-        $this->on('error', function(HTTPException $exception, $request = null) {
+        $this->on('error', function(HTTPException $exception) {
             $response = new Response();
             $response->write($exception->getCode(), ['message' => $exception->getMessage()]);
 
