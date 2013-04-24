@@ -47,7 +47,7 @@ abstract class Request
     protected static $_requestId       = null;
 
     protected static $_authLocation    = '\Sappy\Auth\\';
-    protected static $_allowedAuth     = ['Basic', 'OAuth', 'OAuth2', 'Bearer'];
+    protected static $_allowedAuth     = ['Basic']; //, 'OAuth', 'OAuth2', 'Bearer'];
 
 
     /**
