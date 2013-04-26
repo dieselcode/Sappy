@@ -54,7 +54,7 @@ class JSON
         return $data;
     }
 
-    public static function decode($message, $decodeAsArray = false)
+    public static function decode($message, $decodeAsArray = true)
     {
         $data = json_decode($message, $decodeAsArray);
 

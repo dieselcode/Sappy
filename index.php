@@ -105,6 +105,14 @@ class TestApi extends Sappy\App
                 return $response;
             });
         });
+
+        $this->route('/post_test', function() {
+            $this->post(function($request, $response, $params) {
+                $response->write(200, $request->getContent());
+                return $response;
+            });
+        });
+
     }
 
     // testing heirarchy

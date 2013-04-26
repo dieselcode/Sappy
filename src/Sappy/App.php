@@ -126,7 +126,7 @@ class App extends Request
         }
 
         // if we get here, trigger a PHP error
-        trigger_error(sprintf('Method "%s" not found in class "%s"', $method, get_class($this)), E_USER_WARNING);
+        trigger_error(sprintf('Method "%s" not found in class "%s"', $method, __CLASS__), E_USER_WARNING);
     }
 
     /**
@@ -155,6 +155,43 @@ class App extends Request
                 static::$_options[$option] = $value;
             }
         }
+    }
+
+    /**
+     * Get the content from the current request (parent override)
+     *
+     * @return mixed|null
+     */
+    public function getContent()
+    {
+        $data = null;
+
+        try {
+            $data = parent::getContent();
+        } catch (HTTPException $e) {
+            $this->emit('error', [$e]);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Set a single option (or an array of options) in the App
+     *
+     * @param  mixed $option
+     * @param  mixed $value
+     * @return void
+     */
+    public static function setOption($option, $value = null)
+    {
+        if (is_array($option)) {
+            foreach ($option as $k => $v) {
+                static::$_options[$k] = $v;
+            }
+        } else {
+            static::$_options[$option] = $value;
+        }
+
     }
 
     /**
@@ -317,14 +354,18 @@ class App extends Request
                 // see if our method callback requires authorization
                 if (!is_null($callback) && $callback['requireAuth'] !== false) {
 
+                    $authData = false;
+
                     try {
                         $authData = $this->getAuthData();
                     } catch (HTTPException $e) {
-                        $this->emit('error', [$e, $this]);
+                        $this->emit('error', [$e]);
                     }
 
                     if ($authData === false) {
-                        $this->emit('error', [new HTTPException('Authorization did not succeed (1)', 401)]);
+                        $this->emit('error', [
+                            new HTTPException('Authorization did not succeed (bad authorization values)', 401)
+                        ]);
                     }
 
                     if (isset($this->_eventHandlers['__AUTH__'])) {
@@ -335,7 +376,7 @@ class App extends Request
                         if ($ret === true) {
                             $this->runMethodCallback($route, $callback, $params);
                         } else {
-                            $this->emit('error', [new HTTPException('Authorization did not succeed (2)', 401)]);
+                            $this->emit('error', [new HTTPException('Authorization did not succeed', 401)]);
                         }
                     } else {
                         $this->emit('error', [
@@ -393,18 +434,15 @@ class App extends Request
     /**
      * Runs a callback for a specified HTTP method
      *
-     * @param Route  $route
-     * @param mixed  $callback
-     * @param object $params
+     * @param  Route  $route
+     * @param  mixed  $callback
+     * @param  object $params
      * @return mixed
      */
     protected function runMethodCallback(Route $route, $callback, $params)
     {
-        //
-        // TODO: Redo the logic here... make it nicer
-        //
         if (!is_null($callback) && is_array($callback)) {
-            $closure = $callback['callback'];
+            $closure  = $callback['callback'];
             $response = call_user_func_array($closure->bindTo($this, $this), [$this, new Response(), $params]);
 
             if ($response instanceof Response) {

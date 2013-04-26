@@ -286,24 +286,41 @@ abstract class Request
      * @param  $data
      * @return void
      */
-    public static function setContent($data)
+    public function setContent($data)
     {
-        static::$_data = JSON::decode($data);
+        static::$_data = $data;
     }
 
     /**
      * Return the current request content
      *
      * @return mixed
+     * @throws HTTPException
      */
-    public static function getContent()
+    public function getContent()
     {
-        return static::$_data;
+        /**
+         * TODO: Make this smarter based on our transports
+         */
+        $cType = static::getHeader('Content-Type');
+
+        switch ($cType) {
+            case 'application/json':
+                return JSON::decode(static::$_data);
+                break;
+            case 'application/x-www-form-urlencoded':
+                parse_str(static::$_data, $out);
+                return $out;
+                break;
+            default:
+                throw new HTTPException('Incoming content not a proper content-type format', 400);
+                break;
+        }
     }
 
     /**
      * Allow API creator to set their own custom JSON content-type
-     *    ex: application/vnd.sappy+json
+     *    ex: application/vnd.sappy+json (must end in "json")
      *
      * @param  string $contentType
      * @return void
