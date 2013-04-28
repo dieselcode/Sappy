@@ -40,6 +40,8 @@ use Sappy\Transport\JSON;
 class Response
 {
 
+    public  $cache          = null;
+
     private $_message       = '';
     private $_headers       = [];
     private $_httpCode      = 200;
@@ -88,6 +90,9 @@ class Response
         424 => 'Failed Dependency',
         425 => 'Unordered Collection',
         426 => 'Upgrade Required',
+        428 => 'Precondition Required',
+        429 => 'Too Many Requests',
+        431 => 'Request Header Fields Too Large',
         449 => 'Retry With',
         500 => 'Internal Server Error',
         501 => 'Not Implemented',
@@ -109,6 +114,7 @@ class Response
     public function __construct($httpCode = 200, $message = [])
     {
         $this->write($httpCode, $message);
+        $this->cache = new Cache(App::getOption('cache_directory'), App::getOption('cache_max_age'));
     }
 
     /**
@@ -132,6 +138,11 @@ class Response
     public function getHeaders()
     {
         return $this->_headers;
+    }
+
+    public function getMessage()
+    {
+        return $this->_message;
     }
 
     /**
@@ -160,6 +171,7 @@ class Response
      */
     public function send($addedHeaders = [])
     {
+
         $data = JSON::encode($this->_message);
         $primaryHeaders = [];
 
@@ -174,40 +186,44 @@ class Response
 
         http_response_code($this->_httpCode);
 
-        $primaryHeaders['Status'] = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
+        if ($this->_httpCode != 304) {
+            $cache = $this->cache->get(App::getRealRequestPath());
 
-        if (App::getOption('use_sappy_signature')) {
-            $primaryHeaders['X-Powered-By'] = App::getSignature();
+            // no cache, or expired... set it.
+            if ($cache === false) {
+                $this->cache->set(App::getRealRequestPath(), $data);
+                $lastMod = time();
+                $cacheStatus = 'not-cached';
+            } else {
+                $data = $cache['content'];
+                $lastMod = $cache['filemtime'];
+                $cacheStatus = 'cached';
+            }
+
+            $primaryHeaders['X-Cache-Status'] = $cacheStatus;
+            $primaryHeaders['Last-Modified']  = gmdate(\Sappy\DATE_RFC1123, $lastMod);
         }
 
-        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
+        $primaryHeaders['ETag']             = $this->cache->getETag(APP::getRealRequestPath());
+        $primaryHeaders['Status']           = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
+        $primaryHeaders['X-Powered-By']     = App::getSignature();
+
+        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody) || $this->_httpCode != 304) {
             $primaryHeaders['Content-Type']   = JSON::getContentType();
             $primaryHeaders['Content-Length'] = strlen($data);
-
-            if (App::getOption('generate_content_md5')) {
-                $primaryHeaders['Content-MD5'] = base64_encode(md5($data, true));
-            }
+            $primaryHeaders['Content-MD5'] = base64_encode(md5($data, true));
         }
 
-        // check for cache control, and set accordingly
-        $cache_age = App::getOption('cache_control');
-
-        if ($cache_age !== false) {
-            $primaryHeaders['Cache-Control'] = 'private, max-age=' . $cache_age;
-            $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, time() + $cache_age);
-            $primaryHeaders['Pragma']        = 'cache';
-        } else {
-            $primaryHeaders['Cache-Control'] = 'no-cache, no-store, max-age=0, must-revalidate';
-            $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, strtotime('-1 year'));
-            $primaryHeaders['Pragma']        = 'no-cache';
-        }
+        $primaryHeaders['Cache-Control'] = 'public, max-age=' . App::getOption('cache_max_age');
+        $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, time() + App::getOption('cache_max_age'));
+        $primaryHeaders['Pragma']        = 'cache';
 
         // process and output all of our response headers
         $processHeaders($primaryHeaders);
         $processHeaders($addedHeaders);
         $processHeaders($this->_headers);
 
-        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody)) {
+        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody) || $this->_httpCode != 304) {
             if (App::getOption('use_output_compression') && extension_loaded('zlib')) {
                 // ob_gzhandler sets the following headers for us:
                 //  - Content-Encoding

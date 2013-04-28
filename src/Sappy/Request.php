@@ -248,6 +248,7 @@ abstract class Request
 
     /**
      * Return the current *real* request path (sans namespace)
+     *
      * @return null|string
      */
     public static function getRequestPath()
@@ -261,6 +262,16 @@ abstract class Request
         }
 
         return static::$_requestPath;
+    }
+
+    /**
+     * Return the real request path, as is came in via the request
+     *
+     * @return mixed
+     */
+    public static function getRealRequestPath()
+    {
+        return $_SERVER['REQUEST_URI'];
     }
 
     /**
@@ -299,9 +310,6 @@ abstract class Request
      */
     public function getContent()
     {
-        /**
-         * TODO: Make this smarter based on our transports
-         */
         $cType = static::getHeader('Content-Type');
 
         switch ($cType) {
@@ -309,6 +317,7 @@ abstract class Request
                 return JSON::decode(static::$_data);
                 break;
             case 'application/x-www-form-urlencoded':
+                $out = [];
                 parse_str(static::$_data, $out);
                 return $out;
                 break;
@@ -401,7 +410,7 @@ abstract class Request
                     $http[$parseHeader($k)] = $v;
                 } elseif ($k == 'CONTENT_TYPE') {
                     $http['Content-Type'] = $v;
-                } elseif (!isset($_SERVER['HTTP_AUTHORIZATION']) && $k == 'REDIRECT_HTTP_AUTHORIZATION') {
+                } elseif (!isset($_SERVER['HTTP_AUTHORIZATION']) && $k == 'REDIRECT_HTTP_AUTHORIZATION' && !empty($v)) {
                     $http['Authorization'] = $v;
                 }
             }

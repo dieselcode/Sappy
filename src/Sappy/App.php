@@ -28,6 +28,7 @@ namespace Sappy;
 const DATE_RFC1123 = 'D, d M Y H:i:s \G\M\T';
 
 use Sappy\Exceptions\HTTPException;
+use Sappy\Cache;
 
 /**
  * App class
@@ -41,6 +42,8 @@ use Sappy\Exceptions\HTTPException;
  */
 class App extends Request
 {
+
+    public    $cache             = null;
 
     protected $_routes           = [];
     protected $_currRoute        = null;
@@ -92,6 +95,8 @@ class App extends Request
             }
         }
 
+        $this->cache = new Cache(App::getOption('cache_directory'), App::getOption('cache_max_age'));
+
         // set the content after everything is all setup
         try {
             $this->setContent(@file_get_contents('php://input'));
@@ -142,12 +147,11 @@ class App extends Request
         //
         static::$_options = [
             'use_output_compression' => true,
-            'generate_content_md5'   => true,
-            'cache_control'          => false,
-            'use_sappy_signature'    => true,
             'require_user_agent'     => false,
             'allow_app_extending'    => false,
             'use_json_prettyprint'   => false,
+            'cache_directory'        => null,
+            'cache_max_age'          => 600,
         ];
 
         foreach ($options as $option => $value) {
@@ -333,10 +337,6 @@ class App extends Request
      */
     private function _launch()
     {
-        //
-        // TODO: Redo the logic here... make it nicer
-        //
-
         if (!empty($this->_routes)) {
             // get a matching route
             $route = $this->getValidRoute($this);
@@ -442,6 +442,10 @@ class App extends Request
     protected function runMethodCallback(Route $route, $callback, $params)
     {
         if (!is_null($callback) && is_array($callback)) {
+
+            // handle the cache.  if matches were made, it'll send a 304 back
+            $this->_handleCache();
+
             $closure  = $callback['callback'];
             $response = call_user_func_array($closure->bindTo($this, $this), [$this, new Response(), $params]);
 
@@ -473,6 +477,59 @@ class App extends Request
                 new HTTPException('Requested HTTP method not allowed/implemented for this route', 405, $headers)
             ]);
         }
+    }
+
+    /**
+     * Handle conditional headers for cache
+     *
+     * @return void
+     */
+    private function _handleCache()
+    {
+        //
+        // This method handles conditional requests
+        //   If nothing matches, we follow through with processing.
+        //
+        //  So far, we have support for the following header matches:
+        //    - If-Modified-Since: <http_date>
+        //    - If-Unmodified-Since: <http_date>
+        //    - If-None-Match: "<etag>"
+        //
+
+        $if_modified_since   = strtotime(static::getHeader('If-Modified-Since'));
+        $if_unmodified_since = strtotime(static::getHeader('If-Unmodified-Since'));
+        $if_none_match       = str_replace('"', '', static::getHeader('If-None-Match'));
+
+        $cache_file         = $this->cache->get(static::getRealRequestPath());
+        $cache_etag         = $this->cache->getETag(static::getRealRequestPath());
+
+        $sendNotModified = function() use ($cache_etag) {
+            (new Response())->write(304)->send(['ETag' => $cache_etag]);
+        };
+
+        if (is_array($cache_file)) {
+
+            if (!is_null($if_modified_since)) {
+                if ($cache_file['filemtime'] <= $if_modified_since) {
+                    $sendNotModified();
+                }
+            }
+
+            if (!is_null($if_unmodified_since)) {
+                if ($cache_file['filemtime'] < $if_unmodified_since) {
+                    $sendNotModified();
+                }
+            }
+
+            if (!is_null($if_none_match)) {
+                if ($if_none_match == $cache_etag) {
+                    $sendNotModified();
+                }
+            }
+
+        }
+
+        // cache doesn't exist or is expired, just let execution continue
     }
 
     /**

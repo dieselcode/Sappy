@@ -22,19 +22,17 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-require_once 'vendor/autoload.php';
+require_once 'autoloader.php';
 
 class TestApi extends Sappy\App
 {
 
     private $options = array(
         'use_output_compression' => true,
-        'generate_content_md5'   => true,
-        'cache_control'          => false,
         'require_user_agent'     => true,
-        'http_send_keepalive'    => false,
         'allow_app_extending'    => true,
         'use_json_prettyprint'   => true,
+        'cache_directory'        => 'C:\xampp\htdocs\cache',
     );
 
 
@@ -109,6 +107,22 @@ class TestApi extends Sappy\App
         $this->route('/post_test', function() {
             $this->post(function($request, $response, $params) {
                 $response->write(200, $request->getContent());
+                return $response;
+            });
+        });
+
+        $this->route('/server_vars', function() {
+            $this->get(function($request, $response, $params) {
+                $response->write(200, $_SERVER);
+                return $response;
+            });
+        });
+
+        $this->route('/cache_test', function() {
+            $this->get(function($request, $response, $params) {
+
+                // this response will only be issued if the cache is expired, or no cache is present
+                $response->write(200, ['foo' => 'bar']);
                 return $response;
             });
         });
