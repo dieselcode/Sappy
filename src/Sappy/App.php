@@ -28,7 +28,6 @@ namespace Sappy;
 const DATE_RFC1123 = 'D, d M Y H:i:s \G\M\T';
 
 use Sappy\Exceptions\HTTPException;
-use Sappy\Cache;
 
 /**
  * App class
@@ -43,7 +42,7 @@ use Sappy\Cache;
 class App extends Request
 {
 
-    public    $cache             = null;
+    static    $cache             = null;
 
     protected $_routes           = [];
     protected $_currRoute        = null;
@@ -55,13 +54,15 @@ class App extends Request
     protected $_content          = null;
     static    $_projectURL       = 'https://github.com/dieselcode/Sappy';
 
+
     /**
      * App constructor
      *
      * @param array $namespaces
      * @param array $options
+     * @param Cache $cache
      */
-    public function __construct(array $namespaces = [], array $options = [])
+    public function __construct(array $namespaces = [], array $options = [], Cache $cache = null)
     {
         date_default_timezone_set('GMT');
 
@@ -95,7 +96,8 @@ class App extends Request
             }
         }
 
-        $this->cache = new Cache(App::getOption('cache_directory'), App::getOption('cache_max_age'));
+        // enable the cache if need be
+        self::$cache = $cache;
 
         // set the content after everything is all setup
         try {
@@ -149,9 +151,6 @@ class App extends Request
             'use_output_compression' => true,
             'require_user_agent'     => false,
             'allow_app_extending'    => false,
-            'use_json_prettyprint'   => false,
-            'cache_directory'        => null,
-            'cache_max_age'          => 600,
         ];
 
         foreach ($options as $option => $value) {
@@ -396,6 +395,16 @@ class App extends Request
     }
 
     /**
+     * Determine if we have a cache object
+     *
+     * @return bool
+     */
+    public static function hasCache()
+    {
+        return !!(static::$cache instanceof Cache);
+    }
+
+    /**
      * Run the current App model
      *
      * @return void
@@ -443,11 +452,17 @@ class App extends Request
     {
         if (!is_null($callback) && is_array($callback)) {
 
-            // handle the cache.  if matches were made, it'll send a 304 back
-            $this->_handleCache();
+            if ($this->hasCache()) {
+                // handle the cache.  if matches were made, it'll send a 304 back
+                $this->_handleCache();
+            }
 
             $closure  = $callback['callback'];
-            $response = call_user_func_array($closure->bindTo($this, $this), [$this, new Response(), $params]);
+
+            $response = call_user_func_array(
+                $closure->bindTo($this, $this),
+                [$this, new Response(static::$cache), $params]
+            );
 
             if ($response instanceof Response) {
                 //
@@ -490,39 +505,35 @@ class App extends Request
         // This method handles conditional requests
         //   If nothing matches, we follow through with processing.
         //
-        //  So far, we have support for the following header matches:
         //    - If-Modified-Since: <http_date>
         //    - If-Unmodified-Since: <http_date>
         //    - If-None-Match: "<etag>"
+        //    - If-Match: "<etag>"
         //
 
         $if_modified_since   = strtotime(static::getHeader('If-Modified-Since'));
         $if_unmodified_since = strtotime(static::getHeader('If-Unmodified-Since'));
         $if_none_match       = str_replace('"', '', static::getHeader('If-None-Match'));
+        $if_match            = str_replace('"', '', static::getHeader('If-Match'));
 
-        $cache_file         = $this->cache->get(static::getRealRequestPath());
-        $cache_etag         = $this->cache->getETag(static::getRealRequestPath());
+        $cache_file         = static::$cache->get(static::getRealRequestPath());
+        $cache_etag         = static::$cache->getETag(static::getRealRequestPath());
 
         $sendNotModified = function() use ($cache_etag) {
-            (new Response())->write(304)->send(['ETag' => $cache_etag]);
+            (new Response(static::$cache))->write(304)->send(['ETag' => $cache_etag]);
         };
 
         if (is_array($cache_file)) {
 
-            if (!is_null($if_modified_since)) {
-                if ($cache_file['filemtime'] <= $if_modified_since) {
+            if (!is_null($if_modified_since) || !is_null($if_unmodified_since)) {
+                if (($cache_file['filemtime'] <= $if_modified_since) ||
+                    ($cache_file['filemtime'] < $if_unmodified_since)) {
                     $sendNotModified();
                 }
             }
 
-            if (!is_null($if_unmodified_since)) {
-                if ($cache_file['filemtime'] < $if_unmodified_since) {
-                    $sendNotModified();
-                }
-            }
-
-            if (!is_null($if_none_match)) {
-                if ($if_none_match == $cache_etag) {
+            if (!is_null($if_none_match) || !is_null($if_match)) {
+                if (($if_none_match == $cache_etag) || ($if_match == $cache_etag)) {
                     $sendNotModified();
                 }
             }
@@ -543,7 +554,7 @@ class App extends Request
         // TODO: Add user-supplied logging to this, so they can debug
         //
         $this->on('error', function(HTTPException $exception) {
-            $response = new Response();
+            $response = new Response(static::$cache);
             $response->write($exception->getCode(), ['message' => $exception->getMessage()]);
 
             return $response;

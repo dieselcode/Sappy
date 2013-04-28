@@ -44,8 +44,7 @@ class JSON
 
     public static function encode($message)
     {
-        $pretty = App::getOption('use_json_prettyprint');
-        $data = json_encode($message, ($pretty) ? JSON_PRETTY_PRINT : 0);
+        $data = json_encode($message);
 
         if (($error = static::_handleError()) !== true) {
             throw new HTTPException($error, 500);

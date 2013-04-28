@@ -108,19 +108,17 @@ class Response
 
 
     /**
-     * @param int   $httpCode
-     * @param array $message
+     * @param object $cache
      */
-    public function __construct($httpCode = 200, $message = [])
+    public function __construct($cache = null)
     {
-        $this->write($httpCode, $message);
-        $this->cache = new Cache(App::getOption('cache_directory'), App::getOption('cache_max_age'));
+        $this->cache = $cache;
     }
 
     /**
      * Set additional headers for the response
      *
-     * @param  array $headers
+     * @param  array  $headers
      * @return object
      */
     public function headers($headers = [])
@@ -140,6 +138,11 @@ class Response
         return $this->_headers;
     }
 
+    /**
+     * Get the message for this response
+     *
+     * @return string
+     */
     public function getMessage()
     {
         return $this->_message;
@@ -148,8 +151,8 @@ class Response
     /**
      * Write status code and data to a buffer for an HTTP packet
      *
-     * @param  integer $httpCode
-     * @param  array   $message
+     * @param  int    $httpCode
+     * @param  array  $message
      * @return object
      */
     public function write($httpCode, array $message = [])
@@ -186,25 +189,30 @@ class Response
 
         http_response_code($this->_httpCode);
 
-        if ($this->_httpCode != 304) {
-            $cache = $this->cache->get(App::getRealRequestPath());
+        if (App::hasCache()) {
+            if ($this->_httpCode != 304) {
+                $cache = $this->cache->get(App::getRealRequestPath());
 
-            // no cache, or expired... set it.
-            if ($cache === false) {
-                $this->cache->set(App::getRealRequestPath(), $data);
-                $lastMod = time();
-                $cacheStatus = 'not-cached';
-            } else {
-                $data = $cache['content'];
-                $lastMod = $cache['filemtime'];
-                $cacheStatus = 'cached';
+                // no cache, or expired... set it.
+                if ($cache === false) {
+                    $this->cache->set(App::getRealRequestPath(), $data);
+                    $lastMod = time();
+                    $cacheStatus = 'new-cache';
+                } else {
+                    $data = $cache['content'];
+                    $lastMod = $cache['filemtime'];
+                    $cacheStatus = 'cached';
+                }
+
+                $primaryHeaders['X-Cache-Status'] = $cacheStatus;
+                $primaryHeaders['Last-Modified']  = gmdate(\Sappy\DATE_RFC1123, $lastMod);
             }
-
-            $primaryHeaders['X-Cache-Status'] = $cacheStatus;
-            $primaryHeaders['Last-Modified']  = gmdate(\Sappy\DATE_RFC1123, $lastMod);
+            $primaryHeaders['Cache-Control'] = 'public, max-age=' . $this->cache->getMaxAge();
+            $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, time() + $this->cache->getMaxAge());
+            $primaryHeaders['Pragma']        = 'cache';
+            $primaryHeaders['ETag']          = $this->cache->getETag(APP::getRealRequestPath());
         }
 
-        $primaryHeaders['ETag']             = $this->cache->getETag(APP::getRealRequestPath());
         $primaryHeaders['Status']           = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
         $primaryHeaders['X-Powered-By']     = App::getSignature();
 
@@ -213,10 +221,6 @@ class Response
             $primaryHeaders['Content-Length'] = strlen($data);
             $primaryHeaders['Content-MD5'] = base64_encode(md5($data, true));
         }
-
-        $primaryHeaders['Cache-Control'] = 'public, max-age=' . App::getOption('cache_max_age');
-        $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, time() + App::getOption('cache_max_age'));
-        $primaryHeaders['Pragma']        = 'cache';
 
         // process and output all of our response headers
         $processHeaders($primaryHeaders);

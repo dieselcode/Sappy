@@ -51,6 +51,16 @@ class Cache implements CacheInterface
     }
 
     /**
+     * Return the max age
+     *
+     * @return int
+     */
+    public function getMaxAge()
+    {
+        return $this->_maxAge;
+    }
+
+    /**
      * Get a cache entry based on $key
      *
      * @param  $key

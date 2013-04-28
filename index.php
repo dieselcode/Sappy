@@ -31,14 +31,13 @@ class TestApi extends Sappy\App
         'use_output_compression' => true,
         'require_user_agent'     => true,
         'allow_app_extending'    => true,
-        'use_json_prettyprint'   => true,
-        'cache_directory'        => 'C:\xampp\htdocs\cache',
     );
 
 
     public function __construct($namespaces = [])
     {
-        parent::__construct($namespaces, $this->options);
+        $cache = new \Sappy\Cache('C:\xampp\htdocs\cache', 600);
+        parent::__construct($namespaces, $this->options, $cache);
 
         // set our own custom content type (must be a json type string, ending in 'json')
         $this->setContentType('application/vnd.sappy+json');
