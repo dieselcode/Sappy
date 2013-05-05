@@ -119,9 +119,7 @@ class TestApi extends Sappy\App
 
         $this->route('/cache_test', function() {
             $this->get(function($request, $response, $params) {
-
-                // this response will only be issued if the cache is expired, or no cache is present
-                $response->write(200, ['foo' => 'bar']);
+                $response->write(200, ['foo' => 'bar']); // will be a 304 with no response body if cached
                 return $response;
             });
         });

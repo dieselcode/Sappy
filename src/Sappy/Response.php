@@ -207,6 +207,7 @@ class Response
                 $primaryHeaders['X-Cache-Status'] = $cacheStatus;
                 $primaryHeaders['Last-Modified']  = gmdate(\Sappy\DATE_RFC1123, $lastMod);
             }
+
             $primaryHeaders['Cache-Control'] = 'public, max-age=' . $this->cache->getMaxAge();
             $primaryHeaders['Expires']       = gmdate(\Sappy\DATE_RFC1123, time() + $this->cache->getMaxAge());
             $primaryHeaders['Pragma']        = 'cache';
@@ -216,10 +217,10 @@ class Response
         $primaryHeaders['Status']           = sprintf('%d %s', $this->_httpCode, $this->_validCodes[$this->_httpCode]);
         $primaryHeaders['X-Powered-By']     = App::getSignature();
 
-        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody) || $this->_httpCode != 304) {
+        if (!in_array(strtolower(App::getRequestMethod()), $this->_noBody) || (App::hasCache() && $this->_httpCode != 304)) {
             $primaryHeaders['Content-Type']   = JSON::getContentType();
             $primaryHeaders['Content-Length'] = strlen($data);
-            $primaryHeaders['Content-MD5'] = base64_encode(md5($data, true));
+            $primaryHeaders['Content-MD5']    = base64_encode(md5($data, true));
         }
 
         // process and output all of our response headers

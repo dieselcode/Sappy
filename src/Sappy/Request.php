@@ -192,7 +192,7 @@ abstract class Request
 
         if (!is_null($cookies)) {
             foreach (explode('; ', $cookies) as $k => $v) {
-                $out[$k] = $v;
+                $out[$k] = urldecode($v);
             }
 
             if (!empty($cookieName)) {
@@ -443,7 +443,7 @@ abstract class Request
                 $_qval = (float)$q[1];
             }
 
-            $out[$_val] = $_qval;
+            $out[urldecode($_val)] = $_qval;
         }
 
         arsort($out);
